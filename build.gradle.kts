@@ -34,7 +34,7 @@ This boilerplate is completely removed when using Springboot
  */
 tasks.jar {
     manifest {
-        attributes("Main-Class" to "com.novamaday.d4j.gradle.simplebot.SimpleBot")
+        attributes("Main-Class" to "timmybot.TimmyBot")
     }
 
     finalizedBy("shadowJar")
