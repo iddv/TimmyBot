@@ -73,6 +73,14 @@ class TimmyBot {
                 override fun describe() = "Plays a song, just provide a link and wait for the magic to happen"
             }
 
+            commands["stop"] = object : Command {
+                override fun execute(event: MessageCreateEvent?) {
+                    player.stopTrack()
+                }
+
+                override fun describe() = "Stops the current song"
+            }
+
             commands["ping"] =
                 object : Command {
                     override fun execute(event: MessageCreateEvent?) {
