@@ -61,6 +61,20 @@ class TimmyBot {
                 override fun describe() = "Joins your voice channel"
             }
 
+            commands["leave"] = object : Command {
+                override fun execute(event: MessageCreateEvent?) {
+                    Mono.justOrEmpty(event?.member)
+                        .flatMap { it.voiceState }
+                        .flatMap { it.channel }
+                        .flatMap {
+                            it.sendDisconnectVoiceState()
+                        }
+                        .subscribe()
+                }
+
+                override fun describe() = "Leaves the voice channel"
+            }
+
             val scheduler = TrackScheduler(player)
             commands["play"] = object : Command {
                     override fun execute(event: MessageCreateEvent?) {
@@ -68,6 +82,14 @@ class TimmyBot {
                         val command =
                             listOf(*content!!.split(" ").toTypedArray())
                         playerManager.loadItem(command[1], scheduler)
+
+                        // auto-join
+                        // TODO: we only have to join if the user is already in the channel
+                        try {
+                            commands["join"]!!.execute(event)
+                        } catch (e: java.lang.Exception) {
+                            e.printStackTrace()
+                        }
                     }
 
                 override fun describe() = "Plays a song, just provide a link and wait for the magic to happen"
