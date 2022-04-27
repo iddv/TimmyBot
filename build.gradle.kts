@@ -23,6 +23,7 @@ sourceSets {
             implementation("ch.qos.logback:logback-classic:1.2.3")
             implementation("com.discord4j:discord4j-core:3.2.2")
             implementation("com.sedmelluq:lavaplayer:1.3.75")
+            implementation("io.github.microutils:kotlin-logging-jvm:2.0.11")
 
         }
     }
