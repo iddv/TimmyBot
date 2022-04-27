@@ -110,7 +110,7 @@ class TimmyBot {
                 override fun execute(event: MessageCreateEvent?) {
                     event?.message?.channel!!
                         .flatMap {
-                            it.createMessage("Current track: ${player.playingTrack}")
+                            it.createMessage("Current track: ${player.playingTrack.info.title}")
                         }
                         .subscribe()
                 }
