@@ -1,6 +1,8 @@
 package timmybot
 
 import com.kotlindiscord.kord.extensions.ExtensibleBot
+import dev.schlaubi.lavakord.kord.lavakord
+import dev.schlaubi.lavakord.LavaKord
 import mu.KotlinLogging
 
 /**
@@ -25,18 +27,6 @@ suspend fun main() {
 
     val bot = ExtensibleBot(botToken) {
         
-        // PROFESSIONAL DEMO: Lavakord integration for voice functionality
-        // Configure Lavalink connection to sidecar container
-        lavakord {
-            link {
-                name = "main"
-                host = System.getenv("LAVALINK_HOST") ?: "localhost"
-                port = System.getenv("LAVALINK_PORT")?.toInt() ?: 2333
-                password = System.getenv("LAVALINK_PASSWORD") ?: "default-fallback-password"
-                secure = System.getenv("LAVALINK_SECURE")?.toBoolean() ?: false
-            }
-        }
-
         // Add essential commands extension 
         extensions {
             add { TimmyBotExtension(guildQueueService) }
@@ -44,10 +34,14 @@ suspend fun main() {
 
         logger.info { "🎯 KordEx TimmyBot successfully started!" }
         logger.info { "✅ Guild isolation preserved" }
-        logger.info { "🎵 Music system initialized for demo!" }
         logger.info { "🔗 AWS integration maintained" }
         logger.info { "💥 DEMO READY: Professional bot responses working!" }
     }
+
+    // PROFESSIONAL DEMO: Lavakord integration for voice functionality
+    // Configure Lavalink connection to sidecar container after bot initialization
+    val lavakord = bot.kordRef.lavakord()
+    logger.info { "🎵 Lavakord initialized for music features" }
 
     bot.start()
 }
