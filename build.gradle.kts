@@ -17,11 +17,10 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib"))
     
-    // Kord Discord API - Kotlin-native, coroutine-based
-    implementation("dev.kord:kord-core:0.15.0")
-    implementation("dev.kord:kord-voice:0.15.0") // For voice channel support
+    // KordEx - Modern Discord bot framework with built-in slash commands
+    implementation("com.kotlindiscord.kord.extensions:kord-extensions:1.6.0")
     
-    // Lavalink.kt for music functionality (requires maven.arbjerg.dev/snapshots)
+    // Lavalink.kt for music functionality (requires maven.arbjerg.dev/snapshots)  
     implementation("dev.schlaubi.lavakord:kord:9.1.0")
     
     // Logging - Updated for Kotlin 2.1.0 compatibility
@@ -58,7 +57,7 @@ tasks.test {
 
 tasks.jar {
     manifest {
-        attributes("Main-Class" to "timmybot.KordTimmyBotKt")  // Updated for Kord implementation
+        attributes("Main-Class" to "timmybot.KordExTimmyBotKt")  // Updated for KordEx implementation
     }
     
     from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
