@@ -52,7 +52,7 @@ jobs:
       run: ./gradlew test
       
     - name: 📊 Upload test results (optional)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results
