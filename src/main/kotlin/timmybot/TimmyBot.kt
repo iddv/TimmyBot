@@ -459,3 +459,4 @@ class TimmyBot {
 }
 // Test deployment trigger - 2025-08-01 15:54:43
 // Trigger new workflow with OIDC secret - 2025-08-01 15:57:16
+// Fixed IAM permissions for ECS operations - 2025-08-01 16:03:26

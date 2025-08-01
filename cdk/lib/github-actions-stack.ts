@@ -59,17 +59,27 @@ export class GitHubActionsStack extends cdk.Stack {
           resources: ['*'], // ECR GetAuthorizationToken requires '*'
         }),
         
-        // ECS Permissions - Deploy to Fargate
+        // ECS Read Permissions - Describe operations (broad access for read-only)
         new iam.PolicyStatement({
-          sid: 'ECSPermissions',
+          sid: 'ECSReadPermissions',
           effect: iam.Effect.ALLOW,
           actions: [
             'ecs:DescribeTaskDefinition',
-            'ecs:RegisterTaskDefinition',
-            'ecs:UpdateService',
             'ecs:DescribeServices',
             'ecs:ListTasks',
-            'ecs:DescribeTasks'
+            'ecs:DescribeTasks',
+            'ecs:DescribeClusters'
+          ],
+          resources: ['*'], // Read operations are safe with broad access
+        }),
+        
+        // ECS Write Permissions - Deploy to Fargate (specific resources)
+        new iam.PolicyStatement({
+          sid: 'ECSWritePermissions',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'ecs:RegisterTaskDefinition',
+            'ecs:UpdateService'
           ],
           resources: [
             // Allow access to TimmyBot ECS resources
