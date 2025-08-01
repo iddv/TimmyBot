@@ -46,6 +46,13 @@ The AWS CDK infrastructure for TimmyBot has been successfully implemented with T
 - ✅ SNS topic for alerts
 - ✅ Comprehensive monitoring widgets
 
+#### **6. GitHubActionsStack** (`cdk/lib/github-actions-stack.ts`)
+- ✅ **SECURE OIDC AUTHENTICATION** - No stored AWS credentials!
+- ✅ GitHub OIDC Identity Provider
+- ✅ IAM Role with granular permissions (ECR, ECS, Secrets Manager)
+- ✅ Repository-specific trust policy
+- ✅ Automatic Role ARN output for GitHub configuration
+
 ---
 
 ## 🚀 **Deployment Instructions**
@@ -67,7 +74,7 @@ cdk bootstrap
 
 ### **Deploy All Stacks**
 ```bash
-# Deploy all infrastructure
+# Deploy all infrastructure (includes GitHub Actions OIDC)
 cdk deploy --all
 
 # Or deploy individually for control
@@ -76,7 +83,10 @@ cdk deploy timmybot-dev-database
 cdk deploy timmybot-dev-security
 cdk deploy timmybot-dev-ecs
 cdk deploy timmybot-dev-monitoring
+cdk deploy timmybot-dev-github-actions  # 🔒 OIDC Authentication
 ```
+
+**🎯 Key Output**: The GitHub Actions stack will output the **Role ARN** - copy this for GitHub configuration!
 
 ### **Verify Deployment**
 ```bash
@@ -94,7 +104,21 @@ cdk diff
 
 ## 🔐 **Post-Deployment Configuration**
 
-### **1. Set Discord Bot Token**
+### **1. Configure GitHub Actions (REQUIRED for CI/CD)**
+
+After deployment, the GitHub Actions stack outputs the Role ARN. Configure GitHub Secrets:
+
+```bash
+# 1. Find the Role ARN in the CDK output (look for GitHubActionsRoleArn)
+# 2. Go to: https://github.com/iddv/TimmyBot/settings/secrets/actions
+# 3. Add new secret:
+#    Name: AWS_ROLE_ARN
+#    Value: arn:aws:iam::YOUR-ACCOUNT:role/GitHubActions-timmybot-dev-Role
+```
+
+**🚀 Result**: Push to `master` will now automatically deploy via secure OIDC authentication!
+
+### **2. Set Discord Bot Token**
 ```bash
 # Update the Discord bot token secret
 aws secretsmanager update-secret \
@@ -103,7 +127,7 @@ aws secretsmanager update-secret \
     --region eu-central-1
 ```
 
-### **2. Configure OAuth Clients (Optional)**
+### **3. Configure OAuth Clients (Optional)**
 ```bash
 # Update OAuth credentials for music services
 aws secretsmanager update-secret \
