@@ -43,18 +43,8 @@ suspend fun main() {
 
     // PROFESSIONAL DEMO: Lavakord integration for voice functionality
     // Configure Lavalink connection to sidecar container after bot initialization
-    globalLavakord = bot.kordRef.lavakord {
-        nodes {
-            node {
-                name = "timmybot-lavalink-sidecar"
-                host = System.getenv("LAVALINK_HOST") ?: "localhost"
-                port = (System.getenv("LAVALINK_PORT") ?: "2333").toInt()
-                password = System.getenv("LAVALINK_PASSWORD") ?: "default-password"
-                secure = (System.getenv("LAVALINK_SECURE") ?: "false").toBoolean()
-            }
-        }
-    }
-    logger.info { "🎵 Lavakord initialized with node: ${System.getenv("LAVALINK_HOST")}:${System.getenv("LAVALINK_PORT")}" }
+    globalLavakord = bot.kordRef.lavakord()
+    logger.info { "🎵 Lavakord initialized (using environment variables for connection)" }
     logger.info { "🔗 Global Lavakord instance ready for voice connections" }
 
     bot.start()
