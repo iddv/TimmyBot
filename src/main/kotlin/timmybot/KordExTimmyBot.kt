@@ -3,13 +3,7 @@ package timmybot
 import com.kotlindiscord.kord.extensions.ExtensibleBot
 import dev.schlaubi.lavakord.kord.lavakord
 import dev.schlaubi.lavakord.LavaKord
-import dev.schlaubi.lavakord.rest.TrackEndReason
-import dev.kord.common.annotation.KordExperimental
-import dev.kord.common.ratelimit.BucketRateLimiter.Companion.linear
-import io.ktor.http.*
 import mu.KotlinLogging
-import java.net.URI
-import kotlin.time.Duration.Companion.seconds
 
 // Global Lavakord instance for voice functionality
 lateinit var globalLavakord: LavaKord
@@ -55,14 +49,13 @@ suspend fun main() {
     globalLavakord = bot.kordRef.lavakord {
         link {
             autoReconnect = true
-            retry = linear(2.seconds, 60.seconds, 10)
         }
     }
     
-    // Add the Lavalink node explicitly
+    // Add the Lavalink node explicitly using URI format
+    val lavalinkUri = "ws://$lavalinkHost:$lavalinkPort"
     globalLavakord.addNode(
-        host = lavalinkHost,
-        port = lavalinkPort,
+        serverUri = lavalinkUri,
         password = lavalinkPassword,
         name = "timmybot-lavalink"
     )
