@@ -15,6 +15,8 @@ import discord4j.voice.AudioProvider
 import mu.KotlinLogging
 import reactor.core.publisher.Mono
 import timmybot.commands.PingCommand
+import timmybot.commands.PlayCommand
+import timmybot.commands.JoinCommand
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ConcurrentHashMap
 
@@ -437,8 +439,16 @@ class TimmyBot {
             slashCommandService = SlashCommandService(guildQueueService, awsSecretsService)
             commandRegistry = CommandRegistry()
             
-            // Register unified commands
+            // Create unified commands with dependencies
+            val joinCommand = JoinCommand(provider)
+            val playCommand = PlayCommand(playerManager, player, scheduler, guildQueueService, joinCommand)
+            
+            // Register unified commands for slash command system
             slashCommandService.registerCommand(PingCommand())
+            slashCommandService.registerCommand(joinCommand)
+            slashCommandService.registerCommand(playCommand)
+            
+            logger.info { "🎵 MUSIC COMMANDS READY: /play and /join now available!" }
             
             // Phase 1 Complete: Command handling ready
             val developmentGuildId = System.getenv("DEVELOPMENT_GUILD_ID")
