@@ -103,7 +103,7 @@ jobs:
       run: |
         cd cdk
         echo "🏗️ Deploying CDK infrastructure changes..."
-        npx cdk deploy timmybot-dev-ecs --require-approval never
+        cdk deploy --all --require-approval never
         echo "✅ CDK deployment completed"
         
     - name: ⏭️ Skip CDK deployment
