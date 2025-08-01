@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     java
-    kotlin("jvm") version "1.5.21"  // Match Gradle 7.2's built-in Kotlin version
+    kotlin("jvm") version "1.6.21"  // Updated to resolve version conflicts
 }
 
 group = "com.novamaday.d4j.gradle"
@@ -22,6 +22,10 @@ dependencies {
     implementation("com.sedmelluq:lavaplayer:1.3.75")
     implementation("io.github.microutils:kotlin-logging-jvm:2.0.11")
     
+    // Kotlin Coroutines - Required for unified Command interface
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.6.4")
+    
     // AWS SDK for DynamoDB and Secrets Manager
     implementation("software.amazon.awssdk:dynamodb:2.20.143")
     implementation("software.amazon.awssdk:secretsmanager:2.20.143")
@@ -36,6 +40,9 @@ dependencies {
     testImplementation("org.mockito:mockito-core:4.6.1")
     testImplementation("org.mockito.kotlin:mockito-kotlin:4.0.0")
     testImplementation("org.assertj:assertj-core:3.23.1")
+    testImplementation("io.mockk:mockk:1.13.2")
+    testImplementation("io.projectreactor:reactor-test:3.4.25")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4")
     testImplementation(kotlin("test"))
 }
 

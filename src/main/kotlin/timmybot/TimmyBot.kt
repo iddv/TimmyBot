@@ -9,10 +9,12 @@ import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrameBufferFactory
 import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer
 import discord4j.core.DiscordClientBuilder
 import discord4j.core.event.domain.message.MessageCreateEvent
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent
 import discord4j.core.spec.legacy.LegacyVoiceChannelJoinSpec
 import discord4j.voice.AudioProvider
 import mu.KotlinLogging
 import reactor.core.publisher.Mono
+import timmybot.commands.PingCommand
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ConcurrentHashMap
 
@@ -29,6 +31,10 @@ class TimmyBot {
         // GUILD-ISOLATED SERVICES - FIXES THE SHARED QUEUE BUG!
         private lateinit var guildQueueService: GuildQueueService
         private lateinit var awsSecretsService: AwsSecretsService
+        
+        // SLASH COMMAND MIGRATION SERVICES - PHASE 1
+        private lateinit var slashCommandService: SlashCommandService
+        private lateinit var commandRegistry: CommandRegistry
 
         private val logger = KotlinLogging.logger {}
 
@@ -422,12 +428,40 @@ class TimmyBot {
 
             //Creates the gateway client and connects to the gateway
             val client = DiscordClientBuilder.create(botToken).build()
-                .login()
-                .block()
+            val gatewayClient = client.login().block()
 
             logger.info { "🎵 TimmyBot connected to Discord with Guild Isolation! Ready to serve music per-server." }
+            
+            // PHASE 1: Initialize Slash Command System  
+            logger.info { "🚀 PHASE 1: Initializing Slash Command Migration System..." }
+            slashCommandService = SlashCommandService(guildQueueService, awsSecretsService)
+            commandRegistry = CommandRegistry()
+            
+            // Register unified commands
+            slashCommandService.registerCommand(PingCommand())
+            
+            // Phase 1 Complete: Command handling ready
+            val developmentGuildId = System.getenv("DEVELOPMENT_GUILD_ID")
+            if (developmentGuildId != null) {
+                logger.info { "📋 Development guild configured: $developmentGuildId" }
+                commandRegistry.registerSlashCommands(developmentGuildId)
+            } else {
+                logger.info { "💡 DEVELOPMENT_GUILD_ID not set, but that's fine for Phase 1!" }
+                logger.info { "✅ Your bot can still respond to /ping if the command is registered" }
+            }
 
-            client?.eventDispatcher?.on(MessageCreateEvent::class.java) 
+            // PHASE 1: Add Slash Command Event Listener (NEW)
+            gatewayClient?.eventDispatcher?.on(ChatInputInteractionEvent::class.java)
+                ?.subscribe { event: ChatInputInteractionEvent ->
+                    logger.info { "🔀 SLASH COMMAND: Processing /${event.commandName}" }
+                    slashCommandService.handleSlashCommand(event).subscribe(
+                        { logger.debug { "Slash command processed successfully" } },
+                        { error: Throwable -> logger.error("Error processing slash command", error) }
+                    )
+                }
+            
+            // EXISTING: Prefix Command Event Listener (LEGACY - will be deprecated in Phase 4)
+            gatewayClient?.eventDispatcher?.on(MessageCreateEvent::class.java) 
                 ?.subscribe { event: MessageCreateEvent ->
                     val content = event.message.content
                     
@@ -453,7 +487,8 @@ class TimmyBot {
                 }
 
             logger.info { "🚀 TimmyBot is now running with Guild Isolation - each server has its own music queue!" }
-            client?.onDisconnect()?.block()
+            logger.info { "🔥 PHASE 1 COMPLETE: Slash Command System Active! Both /?ping and /ping commands available." }
+            gatewayClient?.onDisconnect()?.block()
         }
     }
 }
