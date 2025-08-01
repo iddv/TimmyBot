@@ -16,7 +16,7 @@ export class NetworkingStack extends cdk.Stack {
 
     // VPC with public and private subnets across 2 AZs
     this.vpc = new ec2.Vpc(this, 'TimmyBotVpc', {
-      cidr: '10.0.0.0/16',
+      ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
       maxAzs: 2,
       natGateways: 2, // One per AZ for high availability
       subnetConfiguration: [
