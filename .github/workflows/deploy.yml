@@ -1,0 +1,192 @@
+name: 🚀 TimmyBot CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - 'build.gradle.kts'
+      - 'Dockerfile'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - 'build.gradle.kts'
+      - 'Dockerfile'
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_REPOSITORY: timmybot
+  ECS_SERVICE: timmybot-dev-service
+  ECS_CLUSTER: timmybot-dev-cluster
+  CONTAINER_NAME: timmybot-dev-container
+
+jobs:
+  # ================================
+  # TESTING JOB
+  # ================================
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'eclipse-temurin'
+        
+    - name: 📦 Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: 🔧 Make gradlew executable
+      run: chmod +x gradlew
+      
+    - name: 🧪 Run unit tests
+      run: ./gradlew test
+      
+    - name: 📊 Publish test results
+      uses: dorny/test-reporter@v1
+      if: success() || failure()
+      with:
+        name: JUnit Test Results
+        path: 'build/test-results/test/*.xml'
+        reporter: java-junit
+
+  # ================================
+  # BUILD & DEPLOY JOB (only on main branch)
+  # ================================
+  build-and-deploy:
+    name: 🐳 Build & Deploy to AWS
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'eclipse-temurin'
+        
+    - name: 📦 Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: 🔧 Make gradlew executable
+      run: chmod +x gradlew
+      
+    - name: 🏗️ Build application
+      run: ./gradlew build -x test
+      
+    - name: 🔑 Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: 🏃 Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: 🏷️ Generate image tags
+      id: meta
+      run: |
+        echo "IMAGE_TAG=guild-isolation-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+        echo "LATEST_TAG=guild-isolation-latest" >> $GITHUB_OUTPUT
+        echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_OUTPUT
+        echo "IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:guild-isolation-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+        
+    - name: 🐳 Build Docker image
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.IMAGE_TAG }} .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.LATEST_TAG }}
+      env:
+        ECR_REGISTRY: ${{ steps.meta.outputs.ECR_REGISTRY }}
+        
+    - name: 🚀 Push Docker image to ECR
+      run: |
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.IMAGE_TAG }}
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.LATEST_TAG }}
+      env:
+        ECR_REGISTRY: ${{ steps.meta.outputs.ECR_REGISTRY }}
+        
+    - name: 📝 Download ECS task definition
+      run: |
+        aws ecs describe-task-definition \
+          --task-definition timmybot-dev-task \
+          --query taskDefinition > task-definition.json
+          
+    - name: 🔄 Update ECS task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: ${{ env.CONTAINER_NAME }}
+        image: ${{ steps.meta.outputs.IMAGE_URI }}
+        
+    - name: 🚀 Deploy to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
+        
+    - name: 📊 Display deployment info
+      run: |
+        echo "✅ **Deployment Successful!**"
+        echo "🐳 **Image**: ${{ steps.meta.outputs.IMAGE_URI }}"
+        echo "🏗️ **ECS Service**: ${{ env.ECS_SERVICE }}"
+        echo "🎯 **Cluster**: ${{ env.ECS_CLUSTER }}"
+        echo "📍 **Region**: ${{ env.AWS_REGION }}"
+        echo ""
+        echo "🔍 **Verify deployment**:"
+        echo "aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }} --region ${{ env.AWS_REGION }}"
+
+  # ================================
+  # SECURITY SCANNING (Optional)
+  # ================================
+  security:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: 📤 Upload Trivy scan results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'

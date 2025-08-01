@@ -51,7 +51,7 @@ export class EcsStack extends cdk.Stack {
       ],
     });
 
-    // Grant access to secrets
+    // Grant access to secrets for task execution (ECS agent needs this for container startup)
     props.discordBotTokenSecret.grantRead(taskExecutionRole);
     props.databaseConfigSecret.grantRead(taskExecutionRole);
     props.appConfigSecret.grantRead(taskExecutionRole);
@@ -67,6 +67,11 @@ export class EcsStack extends cdk.Stack {
       table.grantReadWriteData(taskRole);
     });
 
+    // Grant runtime access to secrets for the application
+    props.discordBotTokenSecret.grantRead(taskRole);
+    props.databaseConfigSecret.grantRead(taskRole);
+    props.appConfigSecret.grantRead(taskRole);
+
     // Fargate Task Definition
     this.taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDefinition', {
       family: `${props.projectName}-${props.environment}-task`,
@@ -76,46 +81,41 @@ export class EcsStack extends cdk.Stack {
       taskRole: taskRole,
     });
 
-    // Container Definition
+    // Container Definition - Guild Isolation Architecture
     const container = this.taskDefinition.addContainer('TimmyBotContainer', {
       containerName: `${props.projectName}-${props.environment}-container`,
-      image: ecs.ContainerImage.fromRegistry('openjdk:17-jre-slim'), // Placeholder - will be updated with actual image
+      // Guild Isolation Architecture - ECR Image
+      image: ecs.ContainerImage.fromRegistry('164859598862.dkr.ecr.eu-central-1.amazonaws.com/timmybot:guild-isolation-latest'),
       logging: ecs.LogDrivers.awsLogs({
-        streamPrefix: 'ecs',
+        streamPrefix: 'timmybot',
         logGroup: logGroup,
       }),
       environment: {
+        // AWS Configuration for Guild Isolation Architecture
+        AWS_DEFAULT_REGION: this.region,
         AWS_REGION: this.region,
-        PROJECT_NAME: props.projectName,
-        ENVIRONMENT: props.environment,
+        // DynamoDB Table Names (fallback values, secrets override these)
+        GUILD_QUEUES_TABLE: `${props.projectName}-${props.environment}-guild-queues`,
+        SERVER_ALLOWLIST_TABLE: `${props.projectName}-${props.environment}-server-allowlist`,
+        USER_PREFERENCES_TABLE: `${props.projectName}-${props.environment}-user-prefs`,
+        TRACK_CACHE_TABLE: `${props.projectName}-${props.environment}-track-cache`,
+        // Secret Names (used by AwsSecretsService)
+        DISCORD_BOT_TOKEN_SECRET: `${props.projectName}/${props.environment}/discord-bot-token`,
+        DATABASE_CONFIG_SECRET: `${props.projectName}/${props.environment}/database-config`,
+        APP_CONFIG_SECRET: `${props.projectName}/${props.environment}/app-config`,
       },
-      secrets: {
-        // Discord Bot Token
-        DISCORD_BOT_TOKEN: ecs.Secret.fromSecretsManager(props.discordBotTokenSecret, 'token'),
-        // Database Configuration
-        DYNAMODB_REGION: ecs.Secret.fromSecretsManager(props.databaseConfigSecret, 'dynamodb_region'),
-        GUILD_QUEUES_TABLE: ecs.Secret.fromSecretsManager(props.databaseConfigSecret, 'guild_queues_table'),
-        USER_PREFERENCES_TABLE: ecs.Secret.fromSecretsManager(props.databaseConfigSecret, 'user_preferences_table'),
-        TRACK_CACHE_TABLE: ecs.Secret.fromSecretsManager(props.databaseConfigSecret, 'track_cache_table'),
-        SERVER_ALLOWLIST_TABLE: ecs.Secret.fromSecretsManager(props.databaseConfigSecret, 'server_allowlist_table'),
-        // App Configuration
-        LOG_LEVEL: ecs.Secret.fromSecretsManager(props.appConfigSecret, 'log_level'),
-        SERVER_ALLOWLIST_ENABLED: ecs.Secret.fromSecretsManager(props.appConfigSecret, 'server_allowlist_enabled'),
-      },
+      // No secrets needed - AwsSecretsService handles all secret retrieval
       healthCheck: {
-        command: ['CMD-SHELL', 'echo "healthy" || exit 1'],
+        // Health check matches Docker container: check if Java process is running
+        command: ['CMD-SHELL', 'pgrep -f "java.*timmybot.jar" > /dev/null || exit 1'],
         interval: cdk.Duration.seconds(30),
-        timeout: cdk.Duration.seconds(5),
+        timeout: cdk.Duration.seconds(10),
         retries: 3,
         startPeriod: cdk.Duration.seconds(60),
       },
     });
 
-    // Expose port 8080 for health checks (if needed)
-    container.addPortMappings({
-      containerPort: 8080,
-      protocol: ecs.Protocol.TCP,
-    });
+    // No port mappings needed - Discord bot uses WebSocket connections
 
     // ECS Service
     this.service = new ecs.FargateService(this, 'TimmyBotService', {

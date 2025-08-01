@@ -2,10 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     java
-
-    //Gradle shadow plugin to make fatjar
-    id("com.github.johnrengelman.shadow") version ("7.0.0")
-    kotlin("jvm") version "1.6.20"
+    kotlin("jvm") version "1.5.21"  // Match Gradle 7.2's built-in Kotlin version
 }
 
 group = "com.novamaday.d4j.gradle"
@@ -16,38 +13,50 @@ repositories {
     maven("https://m2.dv8tion.net/releases")
 }
 
-sourceSets {
-    all {
-        dependencies {
-            implementation("com.discord4j:discord4j-core:3.2.0")
-            implementation("ch.qos.logback:logback-classic:1.2.3")
-            implementation("com.discord4j:discord4j-core:3.2.2")
-            implementation("com.sedmelluq:lavaplayer:1.3.75")
-            implementation("io.github.microutils:kotlin-logging-jvm:2.0.11")
-
-        }
-    }
+dependencies {
+    implementation(kotlin("stdlib"))
+    
+    // Core bot dependencies
+    implementation("com.discord4j:discord4j-core:3.2.2")
+    implementation("ch.qos.logback:logback-classic:1.2.3")
+    implementation("com.sedmelluq:lavaplayer:1.3.75")
+    implementation("io.github.microutils:kotlin-logging-jvm:2.0.11")
+    
+    // AWS SDK for DynamoDB and Secrets Manager
+    implementation("software.amazon.awssdk:dynamodb:2.20.143")
+    implementation("software.amazon.awssdk:secretsmanager:2.20.143")
+    implementation("software.amazon.awssdk:sts:2.20.143")
+    
+    // JSON parsing for secrets
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
+    
+    // Testing dependencies
+    testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
+    testImplementation("org.mockito:mockito-core:4.6.1")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:4.0.0")
+    testImplementation("org.assertj:assertj-core:3.23.1")
+    testImplementation(kotlin("test"))
 }
 
-/*
-Configure the sun.tools.jar.resources.jar task for our main class and so that `./gradlew build` always makes the fatjar
-This boilerplate is completely removed when using Springboot
- */
+tasks.test {
+    useJUnitPlatform()
+}
+
 tasks.jar {
     manifest {
         attributes("Main-Class" to "timmybot.TimmyBot")
     }
+    
+    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
 
-    finalizedBy("shadowJar")
-}
-dependencies {
-    implementation(kotlin("stdlib-jdk8"))
-}
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
-    jvmTarget = "1.8"
+    jvmTarget = "16"
 }
 val compileTestKotlin: KotlinCompile by tasks
 compileTestKotlin.kotlinOptions {
-    jvmTarget = "1.8"
+    jvmTarget = "16"
 }

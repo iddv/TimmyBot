@@ -1,41 +1,100 @@
-# 🚀 TimmyBot
+# 🚀 TimmyBot 
+*AWS-Compliant Discord Music Bot with Guild Isolation Architecture*
 
-A Discord music bot written in Kotlin using Discord4J and LavaPlayer.
+A next-generation Discord music bot featuring **"Bring Your Own Premium"** authentication, guild-isolated queues, and cloud-native AWS architecture.
 
-## 📋 **What is TimmyBot?**
+## 🎯 **Project Status: MAJOR MILESTONE ACHIEVED** ✅
 
-TimmyBot is a Discord bot that plays music in voice channels. It's built with modern technologies and designed to be reliable and easy to use.
+**✅ Guild Isolation Architecture Successfully Deployed**  
+**✅ AWS ECS Fargate Production Ready**  
+**✅ Cloud-Native Infrastructure Complete**  
 
-**Current Status**: This is the original implementation. A major redesign is in progress - see [Project Development](docs/TRACKER.md) for details.
+## 🎵 **Add TimmyBot to Your Discord Server**
 
-## 🎵 **Commands**
+<div align="center">
 
-* **?play** - Plays a song, eg. `?play https://www.youtube.com/watch?v=dQw4w9WgXcQ`
-* **?skip** - Skips the current song
-* **?current** - Current playing track
-* **?next** - Next track that will be played
-* **?join** - Joins your voice channel
-* **?clear** - Clears the queue
-* **?stfu** - STFU Timmy! Stops the current track, clears the queue and kicks Timmy out fo the channel
-* **?leave** - Leaves the voice channel
-* **?ping** - Pong!
-* **?help** - Help! Eeeelp! (shows this message)
-* **?explain** - Explains the provided command
+### **🚀 TimmyBot is LIVE and Ready to Play Music!**
 
-## 🔧 **Build & Run**
+[![Add TimmyBot to Discord](https://img.shields.io/badge/Add_to_Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white&label=🎵%20TimmyBot)](https://discord.com/api/oauth2/authorize?client_id=965593589109358652&permissions=3145728&scope=bot)
 
-### Build
-```bash
-./gradlew build
+**Features: Guild-Isolated Queues • Cloud-Native • Auto-Scaling**
+
+</div>
+
+### **🔧 Current Architecture**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 AWS CLOUD-NATIVE STACK                     │
+├─────────────────────────────────────────────────────────────┤
+│  ECS Fargate        │  DynamoDB           │  Secrets Manager│
+│  ✅ Running         │  ✅ Guild Queues    │  ✅ Bot Tokens  │  
+│  ✅ Auto-scaling    │  ✅ User Prefs      │  ✅ OAuth Creds │
+│  ✅ IAM Roles       │  ✅ Track Cache     │  ✅ Encrypted   │
+│  ✅ Health Checks   │  ✅ Server Allowlist│                 │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Run Locally
-```bash
-# Set up your Discord bot token as environment variable
-export DISCORD_BOT_TOKEN=your_bot_token_here
+### **🚀 Key Innovation: "Bring Your Own Premium"**
+Instead of bot-managed accounts, TimmyBot will integrate with users' own premium music subscriptions:
+- 🎵 **YouTube Premium**: Personal playlists, ad-free streaming  
+- 🎶 **Spotify Premium**: Full catalog access, lossless audio  
+- 🎧 **SoundCloud Pro**: High-quality streams, extended tracks  
+- 🍎 **Apple Music**: Exclusive content, spatial audio
 
-# Run the bot
-./gradlew bootRun
+## 🎵 **Discord Commands** (Guild-Isolated)
+
+Each Discord server gets its own isolated music queue:
+
+* **?play** - Plays a song in your server's queue, eg. `?play https://www.youtube.com/watch?v=dQw4w9WgXcQ`
+* **?skip** - Skips the current song in your server
+* **?current** - Current playing track for your server
+* **?next** - Next track in your server's queue  
+* **?join** - Joins your voice channel
+* **?clear** - Clears your server's queue
+* **?stfu** - STFU Timmy! Stops current track, clears your server's queue and leaves
+* **?leave** - Leaves the voice channel
+* **?ping** - Pong!
+* **?help** - Shows available commands
+* **?explain** - Explains the provided command
+
+## 🤖 **Discord Bot Setup (Required First Step)**
+
+**Before deployment, you need a Discord bot token and invite link:**
+
+1. **📖 Complete Setup Guide**: [docs/DISCORD_BOT_SETUP.md](docs/DISCORD_BOT_SETUP.md)
+2. **🔗 Get Bot Token**: https://discord.com/developers/applications  
+3. **⚡ Quick Setup**: `./scripts/setup-discord-token.sh YOUR_BOT_TOKEN`
+
+**Your invite link format:**
+```
+https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=3145728&scope=bot
+```
+
+## 🐳 **Deployment Options**
+
+### **Option 1: AWS ECS Deployment (Recommended)**
+Complete cloud-native deployment with auto-scaling:
+
+```bash
+# 1. Deploy infrastructure
+cd cdk && cdk deploy --all
+
+# 2. Configure Discord bot token (get from Discord Developer Portal)
+./scripts/setup-discord-token.sh YOUR_DISCORD_BOT_TOKEN
+
+# 3. Your bot is now running in ECS Fargate and ready to invite!
+```
+
+### **Option 2: Local Development**
+```bash
+# Build the application
+./gradlew build
+
+# Run locally (requires AWS credentials configured)
+export AWS_DEFAULT_REGION=eu-central-1
+export GUILD_QUEUES_TABLE=timmybot-dev-guild-queues
+export SERVER_ALLOWLIST_TABLE=timmybot-dev-server-allowlist
+java -jar build/libs/timmybot.jar
 ```
 
 ## 📖 **Project Development**
