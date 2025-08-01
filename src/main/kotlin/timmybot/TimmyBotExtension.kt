@@ -133,9 +133,10 @@ class TimmyBotExtension(
                     
                     // 🔥 PROFESSIONAL VOICE CONNECTION using Lavakord (Industry Standard)
                     try {
-                        // Initialize Lavakord for professional audio streaming
-                        val lavalink = this@TimmyBotExtension.kord.lavakord()
-                        val link = guild!!.getLink(lavalink)
+                        // Use the pre-configured global Lavakord instance for professional audio streaming
+                        logger.info { "🔗 Attempting voice connection using global Lavakord instance for guild $guildId" }
+                        logger.info { "🎵 Lavakord available nodes: ${globalLavakord.nodes.size}" }
+                        val link = guild!!.getLink(globalLavakord)
                         
                         // Connect to voice channel using Lavalink architecture  
                         link.connect(voiceChannel.id.toString())
