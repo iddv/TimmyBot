@@ -42,10 +42,9 @@ suspend fun main() {
     }
 
     // PROFESSIONAL DEMO: Lavakord integration for voice functionality
-    // Configure Lavalink connection to sidecar container after bot initialization
+    // Simple Lavakord initialization - node discovery mechanism TBD
     globalLavakord = bot.kordRef.lavakord()
-    logger.info { "🎵 Lavakord initialized (using environment variables for connection)" }
-    logger.info { "🔗 Global Lavakord instance ready for voice connections" }
+    logger.info { "🎵 Lavakord initialized (simple mode - investigating node discovery)" }
 
     bot.start()
 }
