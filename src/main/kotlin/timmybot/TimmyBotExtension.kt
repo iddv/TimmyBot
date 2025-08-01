@@ -10,11 +10,10 @@ import dev.schlaubi.lavakord.kord.getLink
 import mu.KotlinLogging
 
 /**
- * TimmyBot Extension for KordEx - EMERGENCY DEMO VERSION!
+ * TimmyBot Extension for KordEx
  *
- * 🚨 CRITICAL FOR DEMO: This extension provides PROFESSIONAL Discord responses!
- * 🎵 DEMO READY: Bot joins voice and shows professional music messages!
- * 🔐 GUILD ISOLATION: DynamoDB queues work perfectly!
+ * Main extension providing Discord slash commands and functionality.
+ * Features guild-isolated music queues using DynamoDB.
  */
 class TimmyBotExtension(
     private val guildQueueService: GuildQueueService
@@ -24,30 +23,29 @@ class TimmyBotExtension(
     private val logger = KotlinLogging.logger {}
     
         override suspend fun setup() {
-        logger.info { "🔧 Setting up TimmyBot extension - DEMO READY VERSION!" }
+        logger.info { "Setting up TimmyBot extension" }
 
-        // 🏓 PING COMMAND - PROVEN WORKING FOR DEMO!
+        // PING COMMAND
         publicSlashCommand {
             name = "ping"
-            description = "Test bot response - CRITICAL for customer demo!"
+            description = "Test bot response"
 
             action {
                 val startTime = System.currentTimeMillis()
 
                 respond {
-                    content = "🏓 **PONG!** KordEx-powered TimmyBot is online and ready! ⚡\n" +
-                            "Response time: ${System.currentTimeMillis() - startTime}ms\n" +
-                            "✅ **DEMO STATUS: WORKING PERFECTLY!**"
+                    content = "🏓 **Pong!** TimmyBot is online.\n" +
+                            "Response time: ${System.currentTimeMillis() - startTime}ms"
                 }
 
-                logger.info { "✅ Ping command executed successfully with REAL Discord response!" }
+                logger.info { "Ping command executed" }
             }
         }
 
-        // 🔗 JOIN COMMAND - ACTUAL VOICE CHANNEL JOINING!
+        // JOIN COMMAND
         publicSlashCommand {
             name = "join"
-            description = "Join your voice channel - WORKING MUSIC!"
+            description = "Join your voice channel"
 
             action {
                 val guildId = guild?.id?.toString()
@@ -70,15 +68,13 @@ class TimmyBotExtension(
                         return@action
                     }
 
-                    // 🎵 PROFESSIONAL VOICE CONNECTION MESSAGE FOR DEMO!
                     respond {
-                        content = "🎵 **CONNECTING TO ${voiceChannel.name}...** 🔥\n" +
-                                "✅ **Guild isolation ACTIVE!** Authorized for this server.\n" +
-                                "🎯 **DEMO STATUS:** Music system ready for `/play` commands!\n" +
-                                "⚡ **Professional Infrastructure:** AWS + DynamoDB + KordEx"
+                        content = "🎵 **Connecting to ${voiceChannel.name}...**\n" +
+                                "✅ Server authorized for TimmyBot access.\n" +
+                                "🎯 Music system ready for `/play` commands!"
                     }
                     
-                    logger.info { "✅ Voice connection request for: ${voiceChannel.name} in guild $guildId" }
+                    logger.info { "Voice connection request for: ${voiceChannel.name} in guild $guildId" }
 
                 } catch (e: Exception) {
                     logger.error("❌ Error in join command", e)
@@ -89,10 +85,10 @@ class TimmyBotExtension(
             }
         }
 
-        // 🎵 PLAY COMMAND - PROFESSIONAL DEMO VERSION!
+        // PLAY COMMAND
         publicSlashCommand(::PlayArgs) {
             name = "play"
-            description = "Play music from YouTube, Spotify, etc. - DEMO READY!"
+            description = "Play music from YouTube, Spotify, etc."
 
             action {
                 val guildId = guild?.id?.toString()
@@ -106,7 +102,7 @@ class TimmyBotExtension(
                 val query = arguments.query
                 
                 try {
-                    // 🎵 FIRST: AUTO-JOIN THE USER'S VOICE CHANNEL (like real music bots!)
+                    // Auto-join user's voice channel
                     val member = user.asMember(guild!!.id)
                     val voiceState = member.getVoiceStateOrNull()
                     val voiceChannel = voiceState?.getChannelOrNull() as? VoiceChannel
@@ -131,42 +127,35 @@ class TimmyBotExtension(
                         query
                     }
                     
-                    // 🔥 PROFESSIONAL VOICE CONNECTION using Lavakord (Industry Standard)
+                    // Voice connection using Lavakord
                     try {
-                        // Use the pre-configured global Lavakord instance for professional audio streaming
-                        logger.info { "🔗 Attempting voice connection using global Lavakord instance for guild $guildId" }
-                        logger.info { "🎵 Lavakord available nodes: ${globalLavakord.nodes.size}" }
+                        logger.info { "Attempting voice connection for guild $guildId" }
+                        logger.info { "Lavakord available nodes: ${globalLavakord.nodes.size}" }
                         val link = guild!!.getLink(globalLavakord)
                         
                         // Connect to voice channel using Lavalink architecture  
                         link.connect(voiceChannel.id.toString())
                         
-                        logger.info { "✅ Successfully connected to voice channel: ${voiceChannel.name} using Lavakord in guild $guildId" }
+                        logger.info { "Successfully connected to voice channel: ${voiceChannel.name} in guild $guildId" }
                         
                         respond {
-                            content = "🎵 **SUCCESSFULLY JOINED ${voiceChannel.name} using Lavakord!** 🔥\n" +
+                            content = "🎵 **Successfully joined ${voiceChannel.name}**\n" +
                                     "🎶 **Track Queued:** $trackTitle\n" +
-                                    "✅ **Guild isolation ACTIVE!** Isolated music queue for your server!\n" +
                                     "📋 **Queue position:** ${guildQueueService.getQueueSize(guildId)}\n" +
-                                    "🎯 **PROFESSIONAL DEMO:** Lavakord voice connection established!\n" +
-                                    "⚡ **Enterprise Stack:** AWS + DynamoDB + KordEx + Lavakord WORKING!\n" +
-                                    "🔧 **Next Step:** Configure Lavalink server for audio streaming"
+                                    "✅ Voice connection established"
                         }
                         
                     } catch (e: Exception) {
-                        logger.error("❌ Lavakord connection error for channel: ${voiceChannel.name}", e)
+                        logger.error("Lavakord connection error for channel: ${voiceChannel.name}", e)
                         respond {
-                            content = "🔧 **Professional Voice System Setup Required!**\n" +
+                            content = "🔧 **Voice system setup required**\n" +
                                     "🎶 **Track queued:** $trackTitle\n" +
-                                    "✅ **Guild isolation ACTIVE:** Queue preserved in DynamoDB\n" +
-                                    "⚡ **Architecture:** Bot ready for Lavalink server connection\n" +
-                                    "📋 **Status:** Voice infrastructure code implemented professionally\n" +
-                                    "🔨 **Next Step:** Deploy Lavalink server for audio streaming\n" +
-                                    "💡 **Demo Note:** Shows enterprise-grade music bot architecture!"
+                                    "📋 **Queue position:** ${guildQueueService.getQueueSize(guildId)}\n" +
+                                    "⚙️ Voice connection unavailable - track added to queue"
                         }
                     }
                     
-                    logger.info { "✅ AUTO-JOINED voice channel ${voiceChannel.name} and queued: $trackTitle in guild $guildId" }
+                    logger.info { "Voice channel ${voiceChannel.name} joined and track queued in guild $guildId" }
 
                 } catch (e: Exception) {
                     logger.error("❌ Error in play command", e)
@@ -233,20 +222,18 @@ class TimmyBotExtension(
             action {
                 respond {
                     content = """
-                        🤖 **TimmyBot - Enterprise Music Bot**
+                        🤖 **TimmyBot - Music Bot**
 
-                        🏓 `/ping` - Test bot response ✅ **WORKING!**
-                        🔗 `/join` - Voice channel connection ✅ **WORKING!**
-                        🎵 `/play <song>` - Queue & join voice ✅ **Lavakord READY!** 
-                        🗑️ `/clear` - Clear music queue ✅ **NEW!**
-                        ℹ️ `/help` - Show this help message ✅ **WORKING!**
-                        📖 `/explain` - Architecture explanation ✅ **WORKING!**
+                        🏓 `/ping` - Test bot response
+                        🔗 `/join` - Join voice channel
+                        🎵 `/play <song>` - Play music from URL or search 
+                        🗑️ `/clear` - Clear music queue
+                        ℹ️ `/help` - Show this help message
+                        📖 `/explain` - Architecture explanation
 
-                        ✅ **PROFESSIONAL DEMO:** Enterprise-grade architecture implemented!
-                        🔐 **Guild Isolation:** Per-server queues & allowlists ACTIVE
-                        ☁️ **AWS Integration:** DynamoDB + Secrets Manager WORKING
-                        🎶 **Voice System:** Lavakord integration (Lavalink server setup pending)
-                        🎯 **Client Demo Ready!**
+                        🔐 **Guild Isolation:** Per-server queues and access control
+                        ☁️ **AWS Integration:** DynamoDB storage and Secrets Manager
+                        🎶 **Voice System:** Lavakord integration for audio streaming
                     """.trimIndent()
                 }
             }
@@ -260,38 +247,36 @@ class TimmyBotExtension(
             action {
                 respond {
                     content = """
-                        📖 **TimmyBot - Enterprise Music Bot Architecture**
+                        📖 **TimmyBot - Music Bot Architecture**
 
-                        🎯 **Professional Core Features:**
+                        🎯 **Core Features:**
                         ✅ Discord slash commands with KordEx framework
-                        ✅ Guild-isolated music queues (cost control) 
+                        ✅ Guild-isolated music queues 
                         ✅ AWS integration (DynamoDB + Secrets Manager)
-                        ✅ Lavakord voice connection architecture
+                        ✅ Lavakord voice connection
 
-                        💰 **Cost Control (ACTIVE):**
-                        ✅ Guild allowlist prevents unauthorized usage  
+                        💰 **Access Control:**
+                        ✅ Guild allowlist for authorized servers
                         ✅ Per-server isolated queues
-                        ✅ "Bring Your Own Premium" model
+                        ✅ Cost-controlled usage model
 
-                        ☁️ **AWS Services (WORKING):**
+                        ☁️ **AWS Services:**
                         ✅ DynamoDB: Guild queues and allowlists
                         ✅ Secrets Manager: Secure credential storage
-                        ✅ ECS Fargate: Auto-scaling deployment
+                        ✅ ECS Fargate: Container deployment
 
-                        🚀 **Enterprise Technology Stack:**
-                        ✅ Kotlin + KordEx (Discord API) - WORKING
-                        ✅ Lavakord (Professional voice connection) - IMPLEMENTED  
-                        ✅ AWS SDK (Cloud integration) - WORKING  
-                        ✅ GitHub Actions (CI/CD) - WORKING
-                        🔧 Lavalink Server (Audio streaming) - Setup pending
-
-                        💡 **Professional Demo:** Shows enterprise-grade music bot architecture!
+                        🚀 **Technology Stack:**
+                        ✅ Kotlin + KordEx (Discord API)
+                        ✅ Lavakord (Voice connection)
+                        ✅ AWS SDK (Cloud integration)
+                        ✅ GitHub Actions (CI/CD)
+                        🔧 Lavalink Server (Audio streaming)
                     """.trimIndent()
                 }
             }
         }
 
-        logger.info { "✅ TimmyBot extension setup complete - DEMO READY!" }
+        logger.info { "TimmyBot extension setup complete" }
     }
 }
 

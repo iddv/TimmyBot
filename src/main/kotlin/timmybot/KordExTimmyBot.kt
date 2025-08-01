@@ -9,21 +9,20 @@ import mu.KotlinLogging
 lateinit var globalLavakord: LavaKord
 
 /**
- * KordEx-based TimmyBot - EMERGENCY DEMO VERSION!
+ * KordEx-based TimmyBot
  *
- * This implementation focuses on WORKING Discord responses and voice connection
- * for immediate customer demo success!
+ * Professional Discord bot implementation using KordEx framework.
  */
 suspend fun main() {
     val logger = KotlinLogging.logger {}
 
-    logger.info { "🚨 DEMO EMERGENCY: Starting KordEx TimmyBot for CUSTOMER DEMO!" }
+    logger.info { "Starting TimmyBot application" }
 
-    // Initialize AWS services (preserving existing cost control)
-    logger.info { "🔧 Initializing AWS services..." }
+    // Initialize AWS services
+    logger.info { "Initializing AWS services" }
     val awsSecretsService = AwsSecretsService()
     val guildQueueService = GuildQueueService()
-    logger.info { "✅ AWS services initialized successfully" }
+    logger.info { "AWS services initialized" }
 
     // Get Discord token from AWS Secrets Manager
     val botToken = awsSecretsService.getDiscordBotToken()
@@ -35,16 +34,12 @@ suspend fun main() {
             add { TimmyBotExtension(guildQueueService) }
         }
 
-        logger.info { "🎯 KordEx TimmyBot successfully started!" }
-        logger.info { "✅ Guild isolation preserved" }
-        logger.info { "🔗 AWS integration maintained" }
-        logger.info { "💥 DEMO READY: Professional bot responses working!" }
+        logger.info { "TimmyBot extension configuration complete" }
     }
 
-    // PROFESSIONAL DEMO: Lavakord integration for voice functionality
-    // Simple Lavakord initialization - node discovery mechanism TBD
+    // Initialize Lavakord for voice functionality
     globalLavakord = bot.kordRef.lavakord()
-    logger.info { "🎵 Lavakord initialized (simple mode - investigating node discovery)" }
+    logger.info { "Lavakord initialized" }
 
     bot.start()
 }
