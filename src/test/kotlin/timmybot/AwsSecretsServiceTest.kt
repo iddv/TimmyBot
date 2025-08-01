@@ -128,18 +128,15 @@ class AwsSecretsServiceTest {
     }
 
     @Test
-    fun `should fallback to environment variables when secrets fail`() {
+    fun `should throw exception when secrets fail - no fallback in production`() {
         // Given: Secrets Manager throws exception
         whenever(mockSecretsClient.getSecretValue(any<GetSecretValueRequest>()))
             .thenThrow(SecretsManagerException.builder().message("Access denied").build())
 
-        // When: Getting database config (should fallback to defaults)
-        val config = awsSecretsService.getDatabaseConfig()
-
-        // Then: Should return default values
-        assertThat(config.region).isEqualTo("eu-central-1")
-        assertThat(config.guildQueuesTable).isEqualTo("timmybot-dev-guild-queues")
-        assertThat(config.userPreferencesTable).isEqualTo("timmybot-dev-user-prefs")
+        // When/Then: Should throw exception (no fallback in production)
+        assertThrows(IllegalStateException::class.java) {
+            awsSecretsService.getDatabaseConfig()
+        }
     }
 
     @Test
@@ -151,11 +148,10 @@ class AwsSecretsServiceTest {
             .build()
         whenever(mockSecretsClient.getSecretValue(any<GetSecretValueRequest>())).thenReturn(response)
 
-        // When/Then: Should fall back gracefully
-        val config = awsSecretsService.getDatabaseConfig()
-        
-        // Should return fallback values
-        assertThat(config.region).isEqualTo("eu-central-1")
+        // When/Then: Should throw exception for malformed JSON
+        assertThrows(IllegalStateException::class.java) {
+            awsSecretsService.getDatabaseConfig()
+        }
     }
 
     @Test

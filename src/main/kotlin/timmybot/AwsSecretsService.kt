@@ -41,8 +41,17 @@ class AwsSecretsService {
             val response = secretsClient.getSecretValue(request)
             val secretString = response.secretString()
             
-            // Parse the JSON secret
-            val secretMap = objectMapper.readValue(secretString, Map::class.java) as Map<String, Any>
+            // Parse the JSON secret with proper error handling
+            val secretMap = try {
+                objectMapper.readValue(secretString, Map::class.java) as Map<String, Any>
+            } catch (e: ClassCastException) {
+                logger.error(e) { "Failed to cast secret to Map format: $secretName" }
+                throw IllegalStateException("Invalid secret format in Secrets Manager: expected JSON object", e)
+            } catch (e: com.fasterxml.jackson.core.JsonProcessingException) {
+                logger.error(e) { "Failed to parse secret JSON: $secretName" }
+                throw IllegalStateException("Invalid secret JSON format in Secrets Manager", e)
+            }
+            
             val token = secretMap["token"] as? String
             
             if (token.isNullOrBlank()) {
@@ -52,6 +61,9 @@ class AwsSecretsService {
             logger.info { "Successfully retrieved Discord bot configuration from Secrets Manager" }
             return token
             
+        } catch (e: IllegalStateException) {
+            // Re-throw our custom exceptions
+            throw e
         } catch (e: Exception) {
             logger.error(e) { "Failed to retrieve Discord bot token from secret: $secretName" }
             throw IllegalStateException("Could not retrieve Discord bot token from Secrets Manager. Check AWS credentials and permissions.", e)
@@ -72,8 +84,16 @@ class AwsSecretsService {
             val response = secretsClient.getSecretValue(request)
             val secretString = response.secretString()
             
-            // Parse the JSON secret
-            val secretMap = objectMapper.readValue(secretString, Map::class.java) as Map<String, Any>
+            // Parse the JSON secret with proper error handling
+            val secretMap = try {
+                objectMapper.readValue(secretString, Map::class.java) as Map<String, Any>
+            } catch (e: ClassCastException) {
+                logger.error(e) { "Failed to cast secret to Map format: $secretName" }
+                throw IllegalStateException("Invalid secret format in Secrets Manager: expected JSON object", e)
+            } catch (e: com.fasterxml.jackson.core.JsonProcessingException) {
+                logger.error(e) { "Failed to parse secret JSON: $secretName" }
+                throw IllegalStateException("Invalid secret JSON format in Secrets Manager", e)
+            }
             
             return DatabaseConfig(
                 region = secretMap["dynamodb_region"] as? String ?: "eu-central-1",
@@ -83,16 +103,12 @@ class AwsSecretsService {
                 serverAllowlistTable = secretMap["server_allowlist_table"] as? String ?: "timmybot-dev-server-allowlist"
             )
             
+        } catch (e: IllegalStateException) {
+            // Re-throw our custom exceptions
+            throw e
         } catch (e: Exception) {
             logger.error(e) { "Failed to retrieve database config from secret: $secretName" }
-            // Fallback to environment variables
-            return DatabaseConfig(
-                region = System.getenv("AWS_REGION") ?: "eu-central-1",
-                guildQueuesTable = System.getenv("GUILD_QUEUES_TABLE") ?: "timmybot-dev-guild-queues",
-                userPreferencesTable = System.getenv("USER_PREFERENCES_TABLE") ?: "timmybot-dev-user-prefs",
-                trackCacheTable = System.getenv("TRACK_CACHE_TABLE") ?: "timmybot-dev-track-cache",
-                serverAllowlistTable = System.getenv("SERVER_ALLOWLIST_TABLE") ?: "timmybot-dev-server-allowlist"
-            )
+            throw IllegalStateException("Could not retrieve database configuration from Secrets Manager. This is a production deployment - Secrets Manager is required.", e)
         }
     }
     
@@ -110,8 +126,16 @@ class AwsSecretsService {
             val response = secretsClient.getSecretValue(request)
             val secretString = response.secretString()
             
-            // Parse the JSON secret
-            val secretMap = objectMapper.readValue(secretString, Map::class.java) as Map<String, Any>
+            // Parse the JSON secret with proper error handling
+            val secretMap = try {
+                objectMapper.readValue(secretString, Map::class.java) as Map<String, Any>
+            } catch (e: ClassCastException) {
+                logger.error(e) { "Failed to cast secret to Map format: $secretName" }
+                throw IllegalStateException("Invalid secret format in Secrets Manager: expected JSON object", e)
+            } catch (e: com.fasterxml.jackson.core.JsonProcessingException) {
+                logger.error(e) { "Failed to parse secret JSON: $secretName" }
+                throw IllegalStateException("Invalid secret JSON format in Secrets Manager", e)
+            }
             
             return AppConfig(
                 environment = secretMap["environment"] as? String ?: "dev",
@@ -121,16 +145,12 @@ class AwsSecretsService {
                 premiumFeatures = (secretMap["premium_features"] as? String)?.toBoolean() ?: true
             )
             
+        } catch (e: IllegalStateException) {
+            // Re-throw our custom exceptions
+            throw e
         } catch (e: Exception) {
             logger.error(e) { "Failed to retrieve app config from secret: $secretName" }
-            // Fallback to environment variables
-            return AppConfig(
-                environment = System.getenv("ENVIRONMENT") ?: "dev",
-                logLevel = System.getenv("LOG_LEVEL") ?: "INFO",
-                serverAllowlistEnabled = System.getenv("SERVER_ALLOWLIST_ENABLED")?.toBoolean() ?: true,
-                oauthRequired = System.getenv("OAUTH_REQUIRED")?.toBoolean() ?: false,
-                premiumFeatures = System.getenv("PREMIUM_FEATURES")?.toBoolean() ?: true
-            )
+            throw IllegalStateException("Could not retrieve application configuration from Secrets Manager. This is a production deployment - Secrets Manager is required.", e)
         }
     }
     
