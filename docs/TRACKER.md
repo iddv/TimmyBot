@@ -37,7 +37,17 @@ Instead of the bot managing music service accounts, users authenticate with thei
 - **Competitive Analysis** - Market positioning and advantages identified
 
 ### ⏳ **In Progress**  
-Currently in **Phase 0: Planning & Documentation**
+Currently in **Phase 0: Planning & Documentation** - **CDK Architecture Review**
+
+**🔄 APPROACH CHANGE:**
+- Switched from Terraform to AWS CDK for native AWS integration
+- CDK plan created and awaiting approval: [CDK_DEPLOYMENT_PLAN.md](CDK_DEPLOYMENT_PLAN.md)
+- All Terraform work removed, starting fresh with AWS-native approach
+
+**✅ APPROVED:**
+- CDK infrastructure design with TypeScript
+- Cost analysis ($44-50/month for development)
+- Guild isolation solution using DynamoDB per-guild queues
 
 ### 🚧 **Upcoming Implementation Phases**
 - **Phase 1**: Foundation & Infrastructure (Week 1-2)
