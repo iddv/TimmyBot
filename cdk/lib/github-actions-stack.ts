@@ -26,17 +26,15 @@ export class GitHubActionsStack extends cdk.Stack {
     super(scope, id, props);
 
     // =============================================================================
-    // 1. GitHub OIDC Identity Provider
+    // 1. GitHub OIDC Identity Provider (Import Existing)
     // =============================================================================
     
-    const githubOidcProvider = new iam.OpenIdConnectProvider(this, 'GitHubOidcProvider', {
-      url: 'https://token.actions.githubusercontent.com',
-      clientIds: ['sts.amazonaws.com'],
-      thumbprints: [
-        // GitHub's OIDC thumbprint (verified by AWS)
-        '6938fd4d98bab03faadb97b34396831e3780aea1'
-      ],
-    });
+    // Import the existing GitHub OIDC provider instead of creating a new one
+    const githubOidcProvider = iam.OpenIdConnectProvider.fromOpenIdConnectProviderArn(
+      this, 
+      'GitHubOidcProvider',
+      `arn:aws:iam::${this.account}:oidc-provider/token.actions.githubusercontent.com`
+    );
 
     // =============================================================================
     // 2. IAM Policy for GitHub Actions
