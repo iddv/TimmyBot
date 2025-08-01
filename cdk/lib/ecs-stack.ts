@@ -72,19 +72,8 @@ export class EcsStack extends cdk.Stack {
     props.databaseConfigSecret.grantRead(taskRole);
     props.appConfigSecret.grantRead(taskRole);
 
-    // Generate secure Lavalink password using CDK Secret
-    const lavalinkPasswordSecret = new secretsmanager.Secret(this, 'LavalinkPassword', {
-      description: 'Generated password for Lavalink sidecar communication',
-      generateSecretString: {
-        secretStringTemplate: '{}',
-        generateStringKey: 'password',
-        excludeCharacters: '"\'\\',
-        passwordLength: 32,
-      },
-    });
-
-    // Grant access to the Lavalink password secret
-    lavalinkPasswordSecret.grantRead(taskRole);
+    // Use existing app-config secret that already contains lavalink_password
+    // This matches the existing Lavalink container configuration
 
     // Fargate Task Definition - Updated for TimmyBot + Lavalink Sidecar
     this.taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDefinition', {
@@ -122,7 +111,7 @@ export class EcsStack extends cdk.Stack {
         LAVALINK_SERVER_SOURCES_HTTP: 'true',
         LAVALINK_SERVER_SOURCES_LOCAL: 'false',
         // Generated password for sidecar communication (network isolated)  
-        LAVALINK_SERVER_PASSWORD: lavalinkPasswordSecret.secretValueFromJson('password').unsafeUnwrap(),
+        LAVALINK_SERVER_PASSWORD: props.appConfigSecret.secretValueFromJson('lavalink_password').unsafeUnwrap(),
         // Logging
         LOGGING_LEVEL_ROOT: 'INFO',
         LOGGING_LEVEL_LAVALINK: 'INFO',
@@ -171,7 +160,7 @@ export class EcsStack extends cdk.Stack {
         LAVALINK_HOST: 'localhost',
         LAVALINK_PORT: '2333',
         LAVALINK_SECURE: 'false',  // HTTP connection (same container network)
-        LAVALINK_PASSWORD: lavalinkPasswordSecret.secretValueFromJson('password').unsafeUnwrap(), // Same generated password as Lavalink container
+        LAVALINK_PASSWORD: props.appConfigSecret.secretValueFromJson('lavalink_password').unsafeUnwrap(), // Same password as Lavalink container from app-config secret
         // Force deployment update
         DEPLOYMENT_VERSION: new Date().toISOString(),
       },
