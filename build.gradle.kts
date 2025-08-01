@@ -24,13 +24,13 @@ dependencies {
     // Lavalink.kt for music functionality (requires maven.arbjerg.dev/snapshots)
     implementation("dev.schlaubi.lavakord:kord:9.1.0")
     
-    // Logging
-    implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("io.github.microutils:kotlin-logging-jvm:2.0.11")
+    // Logging - Updated for Kotlin 2.1.0 compatibility
+    implementation("ch.qos.logback:logback-classic:1.4.14")
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
     
-    // Kotlin Coroutines - Compatible with Kotlin 1.9.10
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
+    // Kotlin Coroutines - Compatible with Kotlin 2.1.0
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.9.0")
     
     // AWS SDK for DynamoDB and Secrets Manager
     implementation("software.amazon.awssdk:dynamodb:2.20.143")
@@ -48,7 +48,7 @@ dependencies {
     testImplementation("org.assertj:assertj-core:3.23.1")
     testImplementation("io.mockk:mockk:1.13.2")
     testImplementation("io.projectreactor:reactor-test:3.4.25")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation(kotlin("test"))
 }
 
