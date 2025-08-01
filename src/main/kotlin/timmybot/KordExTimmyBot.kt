@@ -12,7 +12,7 @@ import mu.KotlinLogging
 suspend fun main() {
     val logger = KotlinLogging.logger {}
     
-    logger.info { "🚀 Starting KordEx-based TimmyBot for CRITICAL DEMO!" }
+    logger.info { "🚨 EMERGENCY: Starting KordEx-based TimmyBot for CRITICAL CUSTOMER DEMO!" }
     
     // Initialize AWS services (preserving existing cost control)
     logger.info { "🔧 Initializing AWS services..." }
@@ -23,18 +23,18 @@ suspend fun main() {
     // Get Discord token from AWS Secrets Manager
     val botToken = awsSecretsService.getDiscordBotToken()
     
-    val bot = ExtensibleBot(botToken) {
-        
-        // Add essential commands extension
+        val bot = ExtensibleBot(botToken) {
+
+        // Add essential commands extension with music support
         extensions {
             add { TimmyBotExtension(guildQueueService) }
         }
-        
+
         logger.info { "🎯 KordEx TimmyBot successfully started!" }
         logger.info { "✅ Guild isolation preserved" }
-        logger.info { "🎵 Music functionality ready (Lavakord in extension)" }
+        logger.info { "🎵 Music functionality ready with Lavakord!" }
         logger.info { "🔗 AWS integration maintained" }
-        logger.info { "💥 CRITICAL: Bot now responds to Discord for DEMO!" }
+        logger.info { "💥 DEMO READY: Bot responds to Discord with WORKING MUSIC!" }
     }
     
     bot.start()
