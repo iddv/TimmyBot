@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     java
-    kotlin("jvm") version "1.6.21"  // Updated to resolve version conflicts
+    kotlin("jvm") version "2.1.0"  // Compatible with Gradle 8.5 and modern Kord libraries
 }
 
 group = "com.novamaday.d4j.gradle"
@@ -11,20 +11,26 @@ version = "2021.08.31"
 repositories {
     mavenCentral()
     maven("https://m2.dv8tion.net/releases")
+    maven("https://maven.arbjerg.dev/snapshots") // Required for Lavalink.kt
 }
 
 dependencies {
     implementation(kotlin("stdlib"))
     
-    // Core bot dependencies
-    implementation("com.discord4j:discord4j-core:3.2.2")
+    // Kord Discord API - Kotlin-native, coroutine-based
+    implementation("dev.kord:kord-core:0.15.0")
+    implementation("dev.kord:kord-voice:0.15.0") // For voice channel support
+    
+    // Lavalink.kt for music functionality (requires maven.arbjerg.dev/snapshots)
+    implementation("dev.schlaubi.lavakord:kord:9.1.0")
+    
+    // Logging
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("com.sedmelluq:lavaplayer:1.3.75")
     implementation("io.github.microutils:kotlin-logging-jvm:2.0.11")
     
-    // Kotlin Coroutines - Required for unified Command interface
+    // Kotlin Coroutines - Compatible with Kotlin 1.9.10
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
     
     // AWS SDK for DynamoDB and Secrets Manager
     implementation("software.amazon.awssdk:dynamodb:2.20.143")
@@ -52,7 +58,7 @@ tasks.test {
 
 tasks.jar {
     manifest {
-        attributes("Main-Class" to "timmybot.TimmyBot")
+        attributes("Main-Class" to "timmybot.KordTimmyBotKt")  // Updated for Kord implementation
     }
     
     from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
@@ -61,9 +67,9 @@ tasks.jar {
 
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
-    jvmTarget = "16"
+    jvmTarget = "17"  // Kord requires Java 17+
 }
 val compileTestKotlin: KotlinCompile by tasks
 compileTestKotlin.kotlinOptions {
-    jvmTarget = "16"
+    jvmTarget = "17"
 }
