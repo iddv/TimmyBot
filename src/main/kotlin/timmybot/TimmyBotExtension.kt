@@ -177,6 +177,53 @@ class TimmyBotExtension(
             }
         }
 
+        // 🗑️ CLEAR COMMAND - Clear the music queue
+        publicSlashCommand {
+            name = "clear"
+            description = "Clear all tracks from the music queue"
+
+            action {
+                val guildId = guild?.id?.toString()
+                if (guildId != null && !guildQueueService.isGuildAllowed(guildId)) {
+                    respond {
+                        content = "🚫 This server is not authorized to use TimmyBot. Contact the bot administrator for access."
+                    }
+                    return@action
+                }
+
+                try {
+                    val queueSize = guildQueueService.getQueueSize(guildId!!)
+                    
+                    if (queueSize == 0) {
+                        respond {
+                            content = "📭 **Queue is already empty!**\n" +
+                                    "💡 Use `/play <song>` to add tracks to the queue"
+                        }
+                        return@action
+                    }
+
+                    // Clear the queue
+                    guildQueueService.clearQueue(guildId)
+                    
+                    respond {
+                        content = "🗑️ **Queue Cleared Successfully!** 🧹\n" +
+                                "📊 **Removed:** $queueSize track${if (queueSize != 1) "s" else ""}\n" +
+                                "✅ **Guild isolation ACTIVE:** Queue cleared for this server only\n" +
+                                "🎵 **Ready for new tracks:** Use `/play <song>` to start fresh!"
+                    }
+                    
+                    logger.info { "✅ Queue cleared successfully for guild $guildId - removed $queueSize tracks" }
+
+                } catch (e: Exception) {
+                    logger.error("❌ Error clearing queue for guild $guildId", e)
+                    respond {
+                        content = "❌ **Error clearing queue:** ${e.message}\n" +
+                                "💡 Please try again or contact support"
+                    }
+                }
+            }
+        }
+
         // ℹ️ HELP COMMAND - Show available commands
         publicSlashCommand {
             name = "help"
@@ -190,6 +237,7 @@ class TimmyBotExtension(
                         🏓 `/ping` - Test bot response ✅ **WORKING!**
                         🔗 `/join` - Voice channel connection ✅ **WORKING!**
                         🎵 `/play <song>` - Queue & join voice ✅ **Lavakord READY!** 
+                        🗑️ `/clear` - Clear music queue ✅ **NEW!**
                         ℹ️ `/help` - Show this help message ✅ **WORKING!**
                         📖 `/explain` - Architecture explanation ✅ **WORKING!**
 
