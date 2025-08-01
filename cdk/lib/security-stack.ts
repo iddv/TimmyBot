@@ -32,26 +32,12 @@ export class SecurityStack extends cdk.Stack {
     this.oauthClientsSecret = new secretsmanager.Secret(this, 'OAuthClientsSecret', {
       secretName: `${props.projectName}/${props.environment}/oauth-clients`,
       description: 'OAuth client secrets for music streaming services',
+      // OAuth credentials removed - per-user OAuth flows implemented instead
+      // Users authenticate directly with music services (Spotify, etc.)
+      // User-specific tokens stored encrypted in DynamoDB user_oauth_tokens table
       generateSecretString: {
-        secretStringTemplate: JSON.stringify({
-          youtube: {
-            client_id: 'PLACEHOLDER_SET_MANUALLY',
-            client_secret: 'PLACEHOLDER_SET_MANUALLY'
-          },
-          spotify: {
-            client_id: 'PLACEHOLDER_SET_MANUALLY',
-            client_secret: 'PLACEHOLDER_SET_MANUALLY'
-          },
-          soundcloud: {
-            client_id: 'PLACEHOLDER_SET_MANUALLY',
-            client_secret: 'PLACEHOLDER_SET_MANUALLY'
-          },
-          apple_music: {
-            client_id: 'PLACEHOLDER_SET_MANUALLY',
-            client_secret: 'PLACEHOLDER_SET_MANUALLY'
-          }
-        }),
-        generateStringKey: 'temp',
+        secretStringTemplate: JSON.stringify({}),
+        generateStringKey: 'placeholder',
       },
       removalPolicy: props.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
@@ -73,13 +59,14 @@ export class SecurityStack extends cdk.Stack {
     // Application Configuration Secret
     this.appConfigSecret = new secretsmanager.Secret(this, 'AppConfigSecret', {
       secretName: `${props.projectName}/${props.environment}/app-config`,
-      description: 'Application configuration settings',
+      description: 'Application configuration settings including Lavalink password',
       secretObjectValue: {
         environment: cdk.SecretValue.unsafePlainText(props.environment),
         log_level: cdk.SecretValue.unsafePlainText(props.environment === 'prod' ? 'INFO' : 'DEBUG'),
         server_allowlist_enabled: cdk.SecretValue.unsafePlainText('true'),
         oauth_required: cdk.SecretValue.unsafePlainText('true'),
         premium_features: cdk.SecretValue.unsafePlainText('true'),
+        // Lavalink password moved to separate secret for better security isolation
       },
       removalPolicy: props.environment === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });

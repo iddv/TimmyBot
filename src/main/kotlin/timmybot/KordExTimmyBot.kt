@@ -26,8 +26,16 @@ suspend fun main() {
     val bot = ExtensibleBot(botToken) {
         
         // PROFESSIONAL DEMO: Lavakord integration for voice functionality
-        // Note: Requires Lavalink server setup for production audio streaming
-        // For demo: Shows proper architecture and professional voice connection handling
+        // Configure Lavalink connection to sidecar container
+        lavakord {
+            link {
+                name = "main"
+                host = System.getenv("LAVALINK_HOST") ?: "localhost"
+                port = System.getenv("LAVALINK_PORT")?.toInt() ?: 2333
+                password = System.getenv("LAVALINK_PASSWORD") ?: "default-fallback-password"
+                secure = System.getenv("LAVALINK_SECURE")?.toBoolean() ?: false
+            }
+        }
 
         // Add essential commands extension 
         extensions {

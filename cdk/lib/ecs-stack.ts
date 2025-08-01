@@ -72,13 +72,65 @@ export class EcsStack extends cdk.Stack {
     props.databaseConfigSecret.grantRead(taskRole);
     props.appConfigSecret.grantRead(taskRole);
 
-    // Fargate Task Definition
+    // Generate UUID for secure Lavalink password
+    const lavalinkPassword = require('crypto').randomUUID();
+
+    // Fargate Task Definition - Updated for TimmyBot + Lavalink Sidecar
     this.taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDefinition', {
       family: `${props.projectName}-${props.environment}-task`,
-      cpu: 256,
-      memoryLimitMiB: 512,
+      cpu: 1024,        // Increased: 1 vCPU for both containers
+      memoryLimitMiB: 2048,  // Increased: 2GB total (TimmyBot: 1GB, Lavalink: 1GB)
       executionRole: taskExecutionRole,
       taskRole: taskRole,
+    });
+
+    // Lavalink Sidecar Container - Audio Processing for Music Bot
+    const lavalinkContainer = this.taskDefinition.addContainer('LavalinkContainer', {
+      containerName: `${props.projectName}-${props.environment}-lavalink`,
+      image: ecs.ContainerImage.fromRegistry('ghcr.io/lavalink-devs/lavalink:4'),
+      memoryReservationMiB: 1024, // 1GB for Lavalink
+      logging: ecs.LogDrivers.awsLogs({
+        streamPrefix: 'lavalink',
+        logGroup: logGroup,
+      }),
+      environment: {
+        // Lavalink Configuration
+        _JAVA_OPTIONS: '-Xmx768m',  // JVM heap: 768MB (leaving room for container overhead)
+        SERVER_PORT: '2333',
+        SERVER_ADDRESS: '0.0.0.0',
+        // Audio processing optimizations
+        LAVALINK_SERVER_BUFFER_DURATION_MS: '400',
+        LAVALINK_SERVER_FRAME_BUFFER_DURATION_MS: '5000',
+        LAVALINK_SERVER_OPUS_ENCODING_QUALITY: '4',  // Balanced quality/CPU
+        LAVALINK_SERVER_RESAMPLING_QUALITY: 'LOW',   // Lower CPU usage
+        // Enable sources
+        LAVALINK_SERVER_SOURCES_YOUTUBE: 'true',
+        LAVALINK_SERVER_SOURCES_SOUNDCLOUD: 'true',
+        LAVALINK_SERVER_SOURCES_BANDCAMP: 'true',
+        LAVALINK_SERVER_SOURCES_TWITCH: 'true',
+        LAVALINK_SERVER_SOURCES_HTTP: 'true',
+        LAVALINK_SERVER_SOURCES_LOCAL: 'false',
+        // Generated UUID password for sidecar communication (network isolated)
+        LAVALINK_SERVER_PASSWORD: lavalinkPassword,
+        // Logging
+        LOGGING_LEVEL_ROOT: 'INFO',
+        LOGGING_LEVEL_LAVALINK: 'INFO',
+      },
+      portMappings: [
+        {
+          containerPort: 2333,
+          protocol: ecs.Protocol.TCP,
+        },
+      ],
+      healthCheck: {
+        // Health check: Lavalink REST API endpoint with authorization
+        command: ['CMD-SHELL', 'curl -f -H "Authorization: $LAVALINK_SERVER_PASSWORD" http://localhost:2333/version || exit 1'],
+        interval: cdk.Duration.seconds(15),
+        timeout: cdk.Duration.seconds(5),
+        retries: 3,
+        startPeriod: cdk.Duration.seconds(30),
+      },
+      essential: true,  // If Lavalink crashes, restart the whole task
     });
 
     // Container Definition - Guild Isolation Architecture
@@ -86,6 +138,7 @@ export class EcsStack extends cdk.Stack {
       containerName: `${props.projectName}-${props.environment}-container`,
       // Guild Isolation Architecture - ECR Image
       image: ecs.ContainerImage.fromRegistry('164859598862.dkr.ecr.eu-central-1.amazonaws.com/timmybot:guild-isolation-latest'),
+      memoryReservationMiB: 1024, // 1GB for TimmyBot
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: 'timmybot',
         logGroup: logGroup,
@@ -103,6 +156,11 @@ export class EcsStack extends cdk.Stack {
         DISCORD_BOT_TOKEN_SECRET: `${props.projectName}/${props.environment}/discord-bot-token`,
         DATABASE_CONFIG_SECRET: `${props.projectName}/${props.environment}/database-config`,
         APP_CONFIG_SECRET: `${props.projectName}/${props.environment}/app-config`,
+        // Lavalink Sidecar Configuration - Localhost Connection
+        LAVALINK_HOST: 'localhost',
+        LAVALINK_PORT: '2333',
+        LAVALINK_SECURE: 'false',  // HTTP connection (same container network)
+        LAVALINK_PASSWORD: lavalinkPassword, // Same generated UUID as Lavalink container
       },
       // No secrets needed - AwsSecretsService handles all secret retrieval
       healthCheck: {
@@ -111,8 +169,15 @@ export class EcsStack extends cdk.Stack {
         interval: cdk.Duration.seconds(30),
         timeout: cdk.Duration.seconds(10),
         retries: 3,
-        startPeriod: cdk.Duration.seconds(60),
-      },
+        startPeriod: cdk.Duration.seconds(90),  // Increased: wait for Lavalink to be ready
+      },  
+      essential: true,  // If TimmyBot crashes, restart the whole task
+    });
+
+    // Container Dependencies - TimmyBot waits for Lavalink to be healthy  
+    container.addContainerDependencies({
+      container: lavalinkContainer,
+      condition: ecs.ContainerDependencyCondition.HEALTHY,
     });
 
     // No port mappings needed - Discord bot uses WebSocket connections
