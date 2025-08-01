@@ -3,8 +3,6 @@ package timmybot
 import dev.kord.core.Kord
 import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
-import dev.kord.gateway.Intent
-import dev.kord.gateway.PrivilegedIntent
 import dev.schlaubi.lavakord.kord.lavakord
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
@@ -55,8 +53,8 @@ class KordTimmyBot {
             
             // Start the bot
             kord.login {
-                @OptIn(PrivilegedIntent::class)
-                intents += Intent.MessageContent
+                // No privileged intents needed for slash commands
+                // MessageContent intent removed as we're using slash commands, not message parsing
             }
             
         } catch (exception: Exception) {
