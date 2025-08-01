@@ -8,6 +8,7 @@ on:
       - 'build.gradle.kts'
       - 'Dockerfile'
       - '.github/workflows/**'
+      - 'cdk/**'  # Trigger on CDK infrastructure changes
 
 env:
   AWS_REGION: eu-central-1
@@ -70,6 +71,44 @@ jobs:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
         role-session-name: GitHubActions-TimmyBot
+
+    # ================================
+    # CDK INFRASTRUCTURE DEPLOYMENT
+    # ================================
+    - name: 🔧 Set up Node.js for CDK
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'cdk/package-lock.json'
+        
+    - name: 📦 Install CDK dependencies
+      run: |
+        cd cdk
+        npm ci
+        
+    - name: 🏗️ Check for CDK changes
+      id: cdk-changes
+      run: |
+        if git diff --name-only HEAD~1 HEAD | grep -q "^cdk/"; then
+          echo "CDK changes detected"
+          echo "deploy=true" >> $GITHUB_OUTPUT
+        else
+          echo "No CDK changes detected"
+          echo "deploy=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: 🚀 Deploy CDK Infrastructure
+      if: steps.cdk-changes.outputs.deploy == 'true'
+      run: |
+        cd cdk
+        echo "🏗️ Deploying CDK infrastructure changes..."
+        npx cdk deploy timmybot-dev-ecs --require-approval never
+        echo "✅ CDK deployment completed"
+        
+    - name: ⏭️ Skip CDK deployment
+      if: steps.cdk-changes.outputs.deploy == 'false'
+      run: echo "⏭️ No CDK changes detected, skipping infrastructure deployment"
         
     - name: 🏃 Login to Amazon ECR
       id: login-ecr
@@ -122,7 +161,12 @@ jobs:
     - name: 📊 Display deployment info
       run: |
         echo "✅ **Deployment Successful!**"
-        echo "🐳 **Image**: ${{ steps.meta.outputs.IMAGE_URI }}"
+        if [ "${{ steps.cdk-changes.outputs.deploy }}" == "true" ]; then
+          echo "🏗️ **CDK Infrastructure**: Deployed (changes detected)"
+        else
+          echo "⏭️ **CDK Infrastructure**: Skipped (no changes)"
+        fi
+        echo "🐳 **Docker Image**: ${{ steps.meta.outputs.IMAGE_URI }}"
         echo "🏗️ **ECS Service**: ${{ env.ECS_SERVICE }}"
         echo "🎯 **Cluster**: ${{ env.ECS_CLUSTER }}"
         echo "📍 **Region**: ${{ env.AWS_REGION }}"
