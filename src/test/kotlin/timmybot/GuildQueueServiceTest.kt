@@ -7,6 +7,7 @@ import org.mockito.kotlin.*
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.*
 import org.assertj.core.api.Assertions.assertThat
+import kotlinx.coroutines.runBlocking
 
 class GuildQueueServiceTest {
 
@@ -80,7 +81,7 @@ class GuildQueueServiceTest {
         whenever(mockDynamoDb.putItem(any<PutItemRequest>())).thenReturn(putResponse)
 
         // When: Adding track to queue
-        val position = guildQueueService.addTrack(testGuildId, testTrackUrl)
+        val position = runBlocking { guildQueueService.addTrack(testGuildId, testTrackUrl) }
 
         // Then: Should return position 1
         assertThat(position).isEqualTo(1)
@@ -109,7 +110,7 @@ class GuildQueueServiceTest {
         whenever(mockDynamoDb.deleteItem(any<DeleteItemRequest>())).thenReturn(deleteResponse)
 
         // When: Polling track from queue
-        val result = guildQueueService.pollTrack(testGuildId)
+        val result = runBlocking { guildQueueService.pollTrack(testGuildId) }
 
         // Then: Should return the track URL
         assertThat(result).isEqualTo(testTrackUrl)
@@ -129,7 +130,7 @@ class GuildQueueServiceTest {
         whenever(mockDynamoDb.query(any<QueryRequest>())).thenReturn(queryResponse)
 
         // When: Polling track from empty queue
-        val result = guildQueueService.pollTrack(testGuildId)
+        val result = runBlocking { guildQueueService.pollTrack(testGuildId) }
 
         // Then: Should return null
         assertThat(result).isNull()
@@ -221,8 +222,10 @@ class GuildQueueServiceTest {
         whenever(mockDynamoDb.putItem(any<PutItemRequest>())).thenReturn(putResponse)
 
         // When: Adding tracks to different guilds
-        guildQueueService.addTrack(guild1, track1)
-        guildQueueService.addTrack(guild2, track2)
+        runBlocking {
+            guildQueueService.addTrack(guild1, track1)
+            guildQueueService.addTrack(guild2, track2)
+        }
 
         // Then: Should make separate DynamoDB calls for each guild
         verify(mockDynamoDb, times(2)).putItem(any<PutItemRequest>())

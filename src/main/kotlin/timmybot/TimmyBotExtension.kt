@@ -42,6 +42,8 @@ class TimmyBotExtension(
             serverUri = if (lavalinkSecure) "wss://$lavalinkHost:$lavalinkPort" else "ws://$lavalinkHost:$lavalinkPort",
             password = lavalinkPassword
         )
+        
+        logger.info { "Lavakord node configured successfully" }
 
         // PING COMMAND
         publicSlashCommand {
@@ -134,7 +136,7 @@ class TimmyBotExtension(
                     }
 
                     // Add to DynamoDB queue for guild isolation
-                    guildQueueService.addTrack(guildId!!, query)
+                    val position = guildQueueService.addTrack(guildId!!, query)
                     
                     // Voice connection and music playback using Lavakord
                     try {
@@ -148,9 +150,9 @@ class TimmyBotExtension(
                         respond {
                             content = "🎵 **Successfully joined ${voiceChannel.name}**\n" +
                                     "🎶 **Track queued:** $query\n" +
-                                    "📋 **Queue position:** ${guildQueueService.getQueueSize(guildId)}\n" +
+                                    "📋 **Queue position:** $position\n" +
                                     "✅ **Lavakord connection established!** 🎸\n" +
-                                    "🔧 **Music playback:** Framework ready, implementation in progress"
+                                    "🔧 **Track loading implementation:** Coming next!"
                         }
                         
                         logger.info { "Successfully connected to voice channel: ${voiceChannel.name} in guild $guildId" }
@@ -160,7 +162,7 @@ class TimmyBotExtension(
                         respond {
                             content = "🔧 **Voice system setup required**\n" +
                                     "🎶 **Track queued:** $query\n" +
-                                    "📋 **Queue position:** ${guildQueueService.getQueueSize(guildId)}\n" +
+                                    "📋 **Queue position:** $position\n" +
                                     "⚙️ Voice connection unavailable - track added to queue\n" +
                                     "🛠️ **Error:** ${e.message}"
                         }

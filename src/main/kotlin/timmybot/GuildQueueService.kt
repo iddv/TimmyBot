@@ -6,6 +6,8 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Guild-isolated queue service using DynamoDB
@@ -59,9 +61,9 @@ class GuildQueueService {
     }
     
     /**
-     * Add track to guild-specific queue
+     * Add track to guild-specific queue (async)
      */
-    fun addTrack(guildId: String, trackUrl: String): Int {
+    suspend fun addTrack(guildId: String, trackUrl: String): Int = withContext(Dispatchers.IO) {
         try {
             // Get next position
             val nextPosition = getQueueSize(guildId) + 1
@@ -82,7 +84,7 @@ class GuildQueueService {
             queueCache.computeIfAbsent(guildId) { mutableListOf() }.add(trackUrl)
             
             logger.info { "Added track to guild $guildId queue at position $nextPosition" }
-            return nextPosition
+            nextPosition
             
         } catch (e: Exception) {
             logger.error(e) { "Failed to add track to guild $guildId queue" }
@@ -91,9 +93,9 @@ class GuildQueueService {
     }
     
     /**
-     * Get next track from guild-specific queue (and remove it)
+     * Get next track from guild-specific queue (and remove it) (async)
      */
-    fun pollTrack(guildId: String): String? {
+    suspend fun pollTrack(guildId: String): String? = withContext(Dispatchers.IO) {
         try {
             // Get first item
             val queryRequest = QueryRequest.builder()
@@ -108,7 +110,7 @@ class GuildQueueService {
             val queryResponse = dynamoDb.query(queryRequest)
             
             if (queryResponse.items().isEmpty()) {
-                return null
+                return@withContext null
             }
             
             val item = queryResponse.items()[0]
@@ -131,14 +133,14 @@ class GuildQueueService {
                 queueCache[guildId]?.remove(trackUrl)
                 
                 logger.info { "Polled track from guild $guildId queue: $trackUrl" }
-                return trackUrl
+                return@withContext trackUrl
             }
             
-            return null
+            return@withContext null
             
         } catch (e: Exception) {
             logger.error(e) { "Failed to poll track from guild $guildId queue" }
-            return null
+            return@withContext null
         }
     }
     
