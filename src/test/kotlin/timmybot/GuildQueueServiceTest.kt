@@ -164,7 +164,7 @@ class GuildQueueServiceTest {
         whenever(mockDynamoDb.query(any<QueryRequest>())).thenReturn(queryResponse)
 
         // When: Getting queue size
-        val size = guildQueueService.getQueueSize(testGuildId)
+        val size = runBlocking { guildQueueService.getQueueSize(testGuildId) }
 
         // Then: Should return 3
         assertThat(size).isEqualTo(3)

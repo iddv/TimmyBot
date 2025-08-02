@@ -24,7 +24,14 @@ class TimmyBotExtension(
     private val logger = KotlinLogging.logger {}
     private lateinit var lavalink: LavaKord
     
-        override suspend fun setup() {
+    // Helper function to format duration in milliseconds to MM:SS format
+    private fun formatDuration(durationMs: Long): String {
+        val minutes = durationMs / 60000
+        val seconds = (durationMs % 60000) / 1000
+        return String.format("%d:%02d", minutes, seconds)
+    }
+
+    override suspend fun setup() {
         logger.info { "Setting up TimmyBot extension" }
         
         // Initialize Lavakord for music functionality with sidecar configuration
@@ -135,9 +142,6 @@ class TimmyBotExtension(
                         return@action
                     }
 
-                    // Add to DynamoDB queue for guild isolation
-                    val position = guildQueueService.addTrack(guildId!!, query)
-                    
                     // Voice connection and music playback using Lavakord
                     try {
                         logger.info { "Attempting voice connection for guild $guildId" }
@@ -147,24 +151,24 @@ class TimmyBotExtension(
                         // Connect to voice channel using Lavalink architecture  
                         link.connect(voiceChannel.id.toString())
                         
+                        // Add to DynamoDB queue for guild isolation
+                        val position = guildQueueService.addTrack(guildId!!, query)
+                        
                         respond {
                             content = "🎵 **Successfully joined ${voiceChannel.name}**\n" +
                                     "🎶 **Track queued:** $query\n" +
                                     "📋 **Queue position:** $position\n" +
                                     "✅ **Lavakord connection established!** 🎸\n" +
-                                    "🔧 **Track loading implementation:** Coming next!"
+                                    "🔧 **Track loading via loadItem() coming next!**"
                         }
                         
                         logger.info { "Successfully connected to voice channel: ${voiceChannel.name} in guild $guildId" }
                         
                     } catch (e: Exception) {
-                        logger.error("Lavakord connection error for channel: ${voiceChannel.name}", e)
+                        logger.error("Lavakord connection/loading error for channel: ${voiceChannel.name}", e)
                         respond {
-                            content = "🔧 **Voice system setup required**\n" +
-                                    "🎶 **Track queued:** $query\n" +
-                                    "📋 **Queue position:** $position\n" +
-                                    "⚙️ Voice connection unavailable - track added to queue\n" +
-                                    "🛠️ **Error:** ${e.message}"
+                            content = "❌ **Error processing track:** ${e.message}\n" +
+                                    "💡 **Try:** YouTube URL, Spotify link, or song name"
                         }
                     }
 

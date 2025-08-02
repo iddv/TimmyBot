@@ -145,6 +145,29 @@ class GuildQueueService {
     }
     
     /**
+     * Get current queue size for a guild
+     */
+    suspend fun getQueueSize(guildId: String): Int = withContext(Dispatchers.IO) {
+        try {
+            val queryRequest = QueryRequest.builder()
+                .tableName(guildQueuesTable)
+                .keyConditionExpression("guild_id = :guildId")
+                .expressionAttributeValues(mapOf(
+                    ":guildId" to AttributeValue.builder().s(guildId).build()
+                ))
+                .select("COUNT")
+                .build()
+                
+            val queryResponse = dynamoDb.query(queryRequest)
+            return@withContext queryResponse.count()
+            
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to get queue size for guild $guildId" }
+            return@withContext 0
+        }
+    }
+    
+    /**
      * Peek at next track without removing it
      */
     fun peekNextTrack(guildId: String): String? {
@@ -172,28 +195,7 @@ class GuildQueueService {
         }
     }
     
-    /**
-     * Get queue size for guild
-     */
-    fun getQueueSize(guildId: String): Int {
-        try {
-            val queryRequest = QueryRequest.builder()
-                .tableName(guildQueuesTable)
-                .keyConditionExpression("guild_id = :guildId")
-                .expressionAttributeValues(mapOf(
-                    ":guildId" to AttributeValue.builder().s(guildId).build()
-                ))
-                .select(Select.COUNT)
-                .build()
-                
-            val queryResponse = dynamoDb.query(queryRequest)
-            return queryResponse.count()
-            
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to get queue size for guild $guildId" }
-            return 0
-        }
-    }
+
     
     /**
      * Clear entire queue for guild
@@ -240,7 +242,7 @@ class GuildQueueService {
     /**
      * Check if queue is empty
      */
-    fun isEmpty(guildId: String): Boolean {
+    suspend fun isEmpty(guildId: String): Boolean {
         return getQueueSize(guildId) == 0
     }
 }
