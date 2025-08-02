@@ -57,7 +57,7 @@ tasks.test {
 
 tasks.jar {
     manifest {
-        attributes("Main-Class" to "timmybot.KordExTimmyBotKt")  // Updated for KordEx implementation
+        attributes("Main-Class" to "timmybot.KordExTimmyBot")  // Correct main class without Kt suffix
     }
     
     from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
