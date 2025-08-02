@@ -94,28 +94,35 @@ export class EcsStack extends cdk.Stack {
         logGroup: logGroup,
       }),
       environment: {
-        // Lavalink Configuration
+        // Lavalink Configuration - Using correct environment variable format
         _JAVA_OPTIONS: '-Xmx768m',  // JVM heap: 768MB (leaving room for container overhead)
+        // Server configuration
         SERVER_PORT: '2333',
         SERVER_ADDRESS: '0.0.0.0',
-        // Audio processing optimizations
+        // Lavalink server configuration
+        LAVALINK_SERVER_PASSWORD: props.appConfigSecret.secretValueFromJson('lavalink_password').unsafeUnwrap(),
+        // YouTube Source Plugin - NEW: Official format from Lavalink docs
+        LAVALINK_PLUGINS_0_DEPENDENCY: 'dev.lavalink.youtube:youtube-plugin:1.7.2',
+        LAVALINK_PLUGINS_0_REPOSITORY: 'https://maven.lavalink.dev/releases',
+        // Disable deprecated built-in sources and enable others
+        LAVALINK_SERVER_SOURCES_YOUTUBE: 'false',  // DISABLED: deprecated, using plugin instead
+        LAVALINK_SERVER_SOURCES_BANDCAMP: 'true',
+        LAVALINK_SERVER_SOURCES_SOUNDCLOUD: 'true', 
+        LAVALINK_SERVER_SOURCES_TWITCH: 'true',
+        LAVALINK_SERVER_SOURCES_VIMEO: 'true',
+        LAVALINK_SERVER_SOURCES_NICO: 'true',
+        LAVALINK_SERVER_SOURCES_HTTP: 'true',
+        LAVALINK_SERVER_SOURCES_LOCAL: 'false',
+        // Audio optimization settings
         LAVALINK_SERVER_BUFFER_DURATION_MS: '400',
         LAVALINK_SERVER_FRAME_BUFFER_DURATION_MS: '5000',
         LAVALINK_SERVER_OPUS_ENCODING_QUALITY: '4',  // Balanced quality/CPU
         LAVALINK_SERVER_RESAMPLING_QUALITY: 'LOW',   // Lower CPU usage
-        // Enable sources - UPDATED: Disable deprecated YouTube source, use plugin instead
-        LAVALINK_SERVER_SOURCES_YOUTUBE: 'false',  // DISABLED: deprecated source
-        LAVALINK_SERVER_SOURCES_SOUNDCLOUD: 'true',
-        LAVALINK_SERVER_SOURCES_BANDCAMP: 'true',
-        LAVALINK_SERVER_SOURCES_TWITCH: 'true',
-        LAVALINK_SERVER_SOURCES_HTTP: 'true',
-        LAVALINK_SERVER_SOURCES_LOCAL: 'false',
-        // Generated password for sidecar communication (network isolated)  
-        LAVALINK_SERVER_PASSWORD: props.appConfigSecret.secretValueFromJson('lavalink_password').unsafeUnwrap(),
-        // YouTube Source Plugin - NEW: Replaces deprecated built-in YouTube source
-        LAVALINK_PLUGINS_0_DEPENDENCY: 'dev.lavalink.youtube:youtube-plugin:1.7.2',
-        LAVALINK_PLUGINS_0_REPOSITORY: 'https://maven.lavalink.dev/releases',
-        // Logging
+        LAVALINK_SERVER_YOUTUBE_PLAYLIST_LOAD_LIMIT: '6',
+        LAVALINK_SERVER_PLAYER_UPDATE_INTERVAL: '5',
+        LAVALINK_SERVER_YOUTUBE_SEARCH_ENABLED: 'true',
+        LAVALINK_SERVER_SOUNDCLOUD_SEARCH_ENABLED: 'true',
+        // Logging configuration
         LOGGING_LEVEL_ROOT: 'INFO',
         LOGGING_LEVEL_LAVALINK: 'INFO',
       },
