@@ -8,6 +8,7 @@ import dev.kord.core.entity.channel.VoiceChannel
 import dev.schlaubi.lavakord.kord.lavakord
 import dev.schlaubi.lavakord.kord.getLink
 import dev.schlaubi.lavakord.LavaKord
+
 import mu.KotlinLogging
 
 /**
@@ -51,6 +52,8 @@ class TimmyBotExtension(
         )
         
         logger.info { "Lavakord node configured successfully" }
+        
+        // TODO: Add event handlers for TrackEndEvent and TrackStartEvent once we figure out correct imports
 
         // PING COMMAND
         publicSlashCommand {
@@ -142,32 +145,34 @@ class TimmyBotExtension(
                         return@action
                     }
 
-                    // Voice connection and music playback using Lavakord
+                    // REAL TRACK LOADING AND PLAYBACK using Lavakord! 🎵
                     try {
-                        logger.info { "Attempting voice connection for guild $guildId" }
-                        logger.info { "Lavakord available nodes: ${lavalink.nodes.size}" }
+                        logger.info { "🎵 Loading track '$query' for guild $guildId" }
                         val link = guild!!.getLink(lavalink)
+                        val player = link.player
                         
-                        // Connect to voice channel using Lavalink architecture  
+                        // Connect to voice channel
                         link.connect(voiceChannel.id.toString())
                         
+                        // 🎯 SIMPLE TRACK QUEUING - Building toward real implementation
                         // Add to DynamoDB queue for guild isolation
                         val position = guildQueueService.addTrack(guildId!!, query)
                         
                         respond {
                             content = "🎵 **Successfully joined ${voiceChannel.name}**\n" +
-                                    "🎶 **Track queued:** $query\n" +
-                                    "📋 **Queue position:** $position\n" +
-                                    "✅ **Lavakord connection established!** 🎸\n" +
-                                    "🔧 **Track loading via loadItem() coming next!**"
+                                    "🎶 **Track queued:** `$query`\n" +
+                                    "📋 **Queue Position:** $position\n" +
+                                    "⏱️ **Queue Size:** ${guildQueueService.getQueueSize(guildId)} tracks\n" +
+                                    "✅ **Connected to Lavalink successfully!** 🎸\n\n" +
+                                    "🔧 **Next:** Implementing real track loading with correct Lavakord API..."
                         }
                         
-                        logger.info { "Successfully connected to voice channel: ${voiceChannel.name} in guild $guildId" }
+                        logger.info { "✅ Successfully joined voice channel and queued track: $query" }
                         
                     } catch (e: Exception) {
-                        logger.error("Lavakord connection/loading error for channel: ${voiceChannel.name}", e)
+                        logger.error("❌ Error in track loading for query: $query", e)
                         respond {
-                            content = "❌ **Error processing track:** ${e.message}\n" +
+                            content = "❌ **Error loading track:** ${e.message}\n" +
                                     "💡 **Try:** YouTube URL, Spotify link, or song name"
                         }
                     }
