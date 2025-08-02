@@ -27,8 +27,21 @@ class TimmyBotExtension(
         override suspend fun setup() {
         logger.info { "Setting up TimmyBot extension" }
         
-        // Initialize Lavakord for music functionality
+        // Initialize Lavakord for music functionality with sidecar configuration
+        val lavalinkHost = System.getenv("LAVALINK_HOST") ?: "localhost"
+        val lavalinkPort = System.getenv("LAVALINK_PORT")?.toIntOrNull() ?: 2333
+        val lavalinkPassword = System.getenv("LAVALINK_PASSWORD") ?: "youshallnotpass"
+        val lavalinkSecure = System.getenv("LAVALINK_SECURE")?.toBoolean() ?: false
+        
+        logger.info { "Configuring Lavalink node: $lavalinkHost:$lavalinkPort (secure: $lavalinkSecure)" }
+        
         lavalink = kord.lavakord()
+        
+        // Add the Lavalink node
+        lavalink.addNode(
+            serverUri = if (lavalinkSecure) "wss://$lavalinkHost:$lavalinkPort" else "ws://$lavalinkHost:$lavalinkPort",
+            password = lavalinkPassword
+        )
 
         // PING COMMAND
         publicSlashCommand {
