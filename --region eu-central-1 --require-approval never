@@ -1,5 +1,0 @@
-[33m50054dc[m[33m ([m[1;36mHEAD -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: Add Lavalink sidecar container with secure UUID password
-[33mb195f15[m adds lavalink servers secrects
-[33mebe60fd[m 🎵 PROFESSIONAL: Implement Lavakord voice connection for enterprise demo
-[33m05a74b6[m 🎵 EMERGENCY FIX: Auto-join voice channel on /play command like real music bots!
-[33m99d9570[m Join channel on play
