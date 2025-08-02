@@ -57,7 +57,7 @@ tasks.test {
 
 tasks.jar {
     manifest {
-        attributes("Main-Class" to "timmybot.KordExTimmyBot")  // Correct main class without Kt suffix
+        attributes("Main-Class" to "timmybot.KordExTimmyBotKt")  // Kt suffix for top-level main function
     }
     
     from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
