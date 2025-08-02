@@ -103,8 +103,8 @@ export class EcsStack extends cdk.Stack {
         LAVALINK_SERVER_FRAME_BUFFER_DURATION_MS: '5000',
         LAVALINK_SERVER_OPUS_ENCODING_QUALITY: '4',  // Balanced quality/CPU
         LAVALINK_SERVER_RESAMPLING_QUALITY: 'LOW',   // Lower CPU usage
-        // Enable sources
-        LAVALINK_SERVER_SOURCES_YOUTUBE: 'true',
+        // Enable sources - UPDATED: Disable deprecated YouTube source, use plugin instead
+        LAVALINK_SERVER_SOURCES_YOUTUBE: 'false',  // DISABLED: deprecated source
         LAVALINK_SERVER_SOURCES_SOUNDCLOUD: 'true',
         LAVALINK_SERVER_SOURCES_BANDCAMP: 'true',
         LAVALINK_SERVER_SOURCES_TWITCH: 'true',
@@ -112,6 +112,9 @@ export class EcsStack extends cdk.Stack {
         LAVALINK_SERVER_SOURCES_LOCAL: 'false',
         // Generated password for sidecar communication (network isolated)  
         LAVALINK_SERVER_PASSWORD: props.appConfigSecret.secretValueFromJson('lavalink_password').unsafeUnwrap(),
+        // YouTube Source Plugin - NEW: Replaces deprecated built-in YouTube source
+        LAVALINK_PLUGINS_0_DEPENDENCY: 'dev.lavalink.youtube:youtube-plugin:1.7.2',
+        LAVALINK_PLUGINS_0_REPOSITORY: 'https://maven.lavalink.dev/releases',
         // Logging
         LOGGING_LEVEL_ROOT: 'INFO',
         LOGGING_LEVEL_LAVALINK: 'INFO',
