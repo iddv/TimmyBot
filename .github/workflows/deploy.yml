@@ -5,6 +5,7 @@ on:
     branches: [ main, master ]
     paths:
       - 'src/**'
+      - 'discord-js/**'
       - 'build.gradle.kts'
       - 'Dockerfile'
       - '.github/workflows/**'
@@ -12,19 +13,172 @@ on:
 
 env:
   AWS_REGION: eu-central-1
-  ECR_REPOSITORY: timmybot
+  ECR_REPOSITORY_KOTLIN: timmybot
+  ECR_REPOSITORY_DISCORDJS: timmybot-discordjs
   ECS_SERVICE: timmybot-dev-service
   ECS_CLUSTER: timmybot-dev-cluster
   CONTAINER_NAME: timmybot-dev-container
 
 jobs:
   # ================================
-  # STREAMLINED BUILD, TEST & DEPLOY
+  # DETECT CHANGES
   # ================================
-  build-test-deploy:
-    name: 🚀 Build, Test & Deploy TimmyBot
+  detect-changes:
+    name: 🔍 Detect Changes
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    outputs:
+      kotlin-changed: ${{ steps.changes.outputs.kotlin }}
+      discordjs-changed: ${{ steps.changes.outputs.discordjs }}
+      cdk-changed: ${{ steps.changes.outputs.cdk }}
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+        
+    - name: 🔍 Check for changes
+      id: changes
+      run: |
+        if git diff --name-only HEAD~1 HEAD | grep -E "^(src/|build.gradle.kts|Dockerfile)"; then
+          echo "kotlin=true" >> $GITHUB_OUTPUT
+        else
+          echo "kotlin=false" >> $GITHUB_OUTPUT
+        fi
+        
+        if git diff --name-only HEAD~1 HEAD | grep -E "^discord-js/"; then
+          echo "discordjs=true" >> $GITHUB_OUTPUT
+        else
+          echo "discordjs=false" >> $GITHUB_OUTPUT
+        fi
+        
+        if git diff --name-only HEAD~1 HEAD | grep -E "^cdk/"; then
+          echo "cdk=true" >> $GITHUB_OUTPUT
+        else
+          echo "cdk=false" >> $GITHUB_OUTPUT
+        fi
+
+  # ================================
+  # DISCORD.JS BUILD, TEST & DEPLOY
+  # ================================
+  build-test-deploy-discordjs:
+    name: 🎵 Build, Test & Deploy Discord.js
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && needs.detect-changes.outputs.discordjs-changed == 'true'
+    permissions:
+      id-token: write   # Required for OIDC authentication
+      contents: read    # Required for checkout
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'discord-js/package-lock.json'
+        
+    - name: 📦 Install Discord.js dependencies
+      run: |
+        cd discord-js
+        npm ci
+        
+    - name: 🧪 Run Discord.js tests
+      run: |
+        cd discord-js
+        npm run test
+        
+    - name: 📊 Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: discordjs-test-results
+        path: discord-js/coverage
+      
+    - name: 🏗️ Build Discord.js application
+      run: |
+        cd discord-js
+        npm run build
+        
+    - name: 🔑 Configure AWS credentials (OIDC Role)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-TimmyBot-DiscordJS
+        
+    - name: 🏃 Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: 🏷️ Generate image tags
+      id: meta
+      run: |
+        echo "IMAGE_TAG=discordjs-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+        echo "LATEST_TAG=latest" >> $GITHUB_OUTPUT
+        echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_OUTPUT
+        echo "IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_DISCORDJS }}:discordjs-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+        
+    - name: 🐳 Build Discord.js Docker image
+      run: |
+        cd discord-js
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_DISCORDJS:${{ steps.meta.outputs.IMAGE_TAG }} .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY_DISCORDJS:${{ steps.meta.outputs.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY_DISCORDJS:${{ steps.meta.outputs.LATEST_TAG }}
+      env:
+        ECR_REGISTRY: ${{ steps.meta.outputs.ECR_REGISTRY }}
+        ECR_REPOSITORY_DISCORDJS: ${{ env.ECR_REPOSITORY_DISCORDJS }}
+        
+    - name: 🚀 Push Discord.js Docker image to ECR
+      run: |
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_DISCORDJS:${{ steps.meta.outputs.IMAGE_TAG }}
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_DISCORDJS:${{ steps.meta.outputs.LATEST_TAG }}
+      env:
+        ECR_REGISTRY: ${{ steps.meta.outputs.ECR_REGISTRY }}
+        ECR_REPOSITORY_DISCORDJS: ${{ env.ECR_REPOSITORY_DISCORDJS }}
+        
+    - name: 📝 Download ECS task definition
+      run: |
+        aws ecs describe-task-definition \
+          --task-definition timmybot-dev-task \
+          --query taskDefinition > task-definition.json
+          
+    - name: 🔄 Update ECS task definition for Discord.js
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: ${{ env.CONTAINER_NAME }}
+        image: ${{ steps.meta.outputs.IMAGE_URI }}
+        
+    - name: 🚀 Deploy Discord.js to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
+        
+    - name: 📊 Display Discord.js deployment info
+      run: |
+        echo "✅ **Discord.js Deployment Successful!**"
+        echo "🐳 **Docker Image**: ${{ steps.meta.outputs.IMAGE_URI }}"
+        echo "🏗️ **ECS Service**: ${{ env.ECS_SERVICE }}"
+        echo "🎯 **Cluster**: ${{ env.ECS_CLUSTER }}"
+        echo "📍 **Region**: ${{ env.AWS_REGION }}"
+        echo ""
+        echo "🔍 **Verify deployment**:"
+        echo "aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }} --region ${{ env.AWS_REGION }}"
+
+  # ================================
+  # KOTLIN BUILD, TEST & DEPLOY (Legacy)
+  # ================================
+  build-test-deploy-kotlin:
+    name: ☕ Build, Test & Deploy Kotlin (Legacy)
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && needs.detect-changes.outputs.kotlin-changed == 'true'
     permissions:
       id-token: write   # Required for OIDC authentication
       contents: read    # Required for checkout
@@ -55,11 +209,11 @@ jobs:
     - name: 🧪 Run unit tests
       run: ./gradlew test
       
-    - name: 📊 Upload test results (optional)
+    - name: 📊 Upload test results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results
+        name: kotlin-test-results
         path: build/test-results
       
     - name: 🏗️ Build application
@@ -70,11 +224,52 @@ jobs:
       with:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActions-TimmyBot
+        role-session-name: GitHubActions-TimmyBot-Kotlin
+        
+    - name: 🏃 Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: 🏷️ Generate image tags
+      id: meta
+      run: |
+        echo "IMAGE_TAG=guild-isolation-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+        echo "LATEST_TAG=guild-isolation-latest" >> $GITHUB_OUTPUT
+        echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_OUTPUT
+        echo "IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_KOTLIN }}:guild-isolation-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+        
+    - name: 🐳 Build Kotlin Docker image
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_KOTLIN:${{ steps.meta.outputs.IMAGE_TAG }} .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY_KOTLIN:${{ steps.meta.outputs.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY_KOTLIN:${{ steps.meta.outputs.LATEST_TAG }}
+      env:
+        ECR_REGISTRY: ${{ steps.meta.outputs.ECR_REGISTRY }}
+        ECR_REPOSITORY_KOTLIN: ${{ env.ECR_REPOSITORY_KOTLIN }}
+        
+    - name: 🚀 Push Kotlin Docker image to ECR
+      run: |
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_KOTLIN:${{ steps.meta.outputs.IMAGE_TAG }}
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_KOTLIN:${{ steps.meta.outputs.LATEST_TAG }}
+      env:
+        ECR_REGISTRY: ${{ steps.meta.outputs.ECR_REGISTRY }}
+        ECR_REPOSITORY_KOTLIN: ${{ env.ECR_REPOSITORY_KOTLIN }}
 
-    # ================================
-    # CDK INFRASTRUCTURE DEPLOYMENT
-    # ================================
+  # ================================
+  # CDK INFRASTRUCTURE DEPLOYMENT
+  # ================================
+  deploy-infrastructure:
+    name: 🏗️ Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && needs.detect-changes.outputs.cdk-changed == 'true'
+    permissions:
+      id-token: write   # Required for OIDC authentication
+      contents: read    # Required for checkout
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
     - name: 🔧 Set up Node.js for CDK
       uses: actions/setup-node@v4
       with:
@@ -87,97 +282,30 @@ jobs:
         cd cdk
         npm ci
         
-    - name: 🏗️ Check for CDK changes
-      id: cdk-changes
-      run: |
-        if git diff --name-only HEAD~1 HEAD | grep -q "^cdk/"; then
-          echo "CDK changes detected"
-          echo "deploy=true" >> $GITHUB_OUTPUT
-        else
-          echo "No CDK changes detected"
-          echo "deploy=false" >> $GITHUB_OUTPUT
-        fi
+    - name: 🔑 Configure AWS credentials (OIDC Role)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActions-TimmyBot-CDK
         
     - name: 🚀 Deploy CDK Infrastructure
-      if: steps.cdk-changes.outputs.deploy == 'true'
       run: |
         cd cdk
         echo "🏗️ Deploying CDK infrastructure changes..."
         cdk deploy --all --require-approval never
         echo "✅ CDK deployment completed"
         
-    - name: ⏭️ Skip CDK deployment
-      if: steps.cdk-changes.outputs.deploy == 'false'
-      run: echo "⏭️ No CDK changes detected, skipping infrastructure deployment"
-        
-    - name: 🏃 Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-      
-    - name: 🏷️ Generate image tags
-      id: meta
+    - name: 📊 Display infrastructure deployment info
       run: |
-        echo "IMAGE_TAG=guild-isolation-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
-        echo "LATEST_TAG=guild-isolation-latest" >> $GITHUB_OUTPUT
-        echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_OUTPUT
-        echo "IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:guild-isolation-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
-        
-    - name: 🐳 Build Docker image
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.IMAGE_TAG }} .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.LATEST_TAG }}
-      env:
-        ECR_REGISTRY: ${{ steps.meta.outputs.ECR_REGISTRY }}
-        
-    - name: 🚀 Push Docker image to ECR
-      run: |
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.IMAGE_TAG }}
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.LATEST_TAG }}
-      env:
-        ECR_REGISTRY: ${{ steps.meta.outputs.ECR_REGISTRY }}
-        
-    - name: 📝 Download ECS task definition
-      run: |
-        aws ecs describe-task-definition \
-          --task-definition timmybot-dev-task \
-          --query taskDefinition > task-definition.json
-          
-    - name: 🔄 Update ECS task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: task-definition.json
-        container-name: ${{ env.CONTAINER_NAME }}
-        image: ${{ steps.meta.outputs.IMAGE_URI }}
-        
-    - name: 🚀 Deploy to Amazon ECS
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ env.ECS_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
-        
-    - name: 📊 Display deployment info
-      run: |
-        echo "✅ **Deployment Successful!**"
-        if [ "${{ steps.cdk-changes.outputs.deploy }}" == "true" ]; then
-          echo "🏗️ **CDK Infrastructure**: Deployed (changes detected)"
-        else
-          echo "⏭️ **CDK Infrastructure**: Skipped (no changes)"
-        fi
-        echo "🐳 **Docker Image**: ${{ steps.meta.outputs.IMAGE_URI }}"
-        echo "🏗️ **ECS Service**: ${{ env.ECS_SERVICE }}"
-        echo "🎯 **Cluster**: ${{ env.ECS_CLUSTER }}"
+        echo "✅ **Infrastructure Deployment Successful!**"
+        echo "🏗️ **CDK Stacks**: Deployed"
         echo "📍 **Region**: ${{ env.AWS_REGION }}"
-        echo ""
-        echo "🔍 **Verify deployment**:"
-        echo "aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }} --region ${{ env.AWS_REGION }}"
 
   # ================================
-  # SECURITY SCANNING (Optional)
+  # SECURITY SCANNING
   # ================================
-  security:
+  security-scan:
     name: 🔒 Security Scan
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -186,16 +314,30 @@ jobs:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
       
-    - name: 🔍 Run Trivy vulnerability scanner
+    - name: 🔍 Run Trivy vulnerability scanner on Kotlin
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
         scan-ref: '.'
         format: 'sarif'
-        output: 'trivy-results.sarif'
+        output: 'trivy-kotlin-results.sarif'
         
-    - name: 📤 Upload Trivy scan results to GitHub Security
+    - name: 🔍 Run Trivy vulnerability scanner on Discord.js
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: 'discord-js'
+        format: 'sarif'
+        output: 'trivy-discordjs-results.sarif'
+        
+    - name: 📤 Upload Kotlin scan results to GitHub Security
       uses: github/codeql-action/upload-sarif@v2
       if: always()
       with:
-        sarif_file: 'trivy-results.sarif'
+        sarif_file: 'trivy-kotlin-results.sarif'
+        
+    - name: 📤 Upload Discord.js scan results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-discordjs-results.sarif'

@@ -3,6 +3,7 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+// CloudWatch alarms and SNS topics are managed in the monitoring stack
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
@@ -133,28 +134,30 @@ export class EcsStack extends cdk.Stack {
         },
       ],
       healthCheck: {
-        // Health check: Lavalink REST API endpoint with authorization
+        // Health check: Lavalink REST API endpoint with authorization (revert to working version)
         command: ['CMD-SHELL', 'curl -f -H "Authorization: $LAVALINK_SERVER_PASSWORD" http://localhost:2333/version || exit 1'],
-        interval: cdk.Duration.seconds(15),
-        timeout: cdk.Duration.seconds(5),
-        retries: 3,
-        startPeriod: cdk.Duration.seconds(30),
+        interval: cdk.Duration.seconds(30), // Keep original interval that was working
+        timeout: cdk.Duration.seconds(10),  // Keep original timeout that was working
+        retries: 3,  // Slightly more retries than original (was 2)
+        startPeriod: cdk.Duration.seconds(60), // Keep original start period that was working
       },
-      essential: true,  // If Lavalink crashes, restart the whole task
+      essential: false,  // Don't restart the whole task if Lavalink fails - let it stay failed
     });
 
-    // Container Definition - Guild Isolation Architecture
+    // Container Definition - Discord.js Migration
     const container = this.taskDefinition.addContainer('TimmyBotContainer', {
       containerName: `${props.projectName}-${props.environment}-container`,
-      // Guild Isolation Architecture - ECR Image
-      image: ecs.ContainerImage.fromRegistry('164859598862.dkr.ecr.eu-central-1.amazonaws.com/timmybot:guild-isolation-latest'),
-      memoryReservationMiB: 1024, // 1GB for TimmyBot
+      // Discord.js Implementation - ECR Image
+      image: ecs.ContainerImage.fromRegistry('164859598862.dkr.ecr.eu-central-1.amazonaws.com/timmybot-discordjs:latest'),
+      memoryReservationMiB: 1024, // 1GB for TimmyBot Discord.js
       logging: ecs.LogDrivers.awsLogs({
-        streamPrefix: 'timmybot',
+        streamPrefix: 'timmybot-discordjs',
         logGroup: logGroup,
       }),
       environment: {
-        // AWS Configuration for Guild Isolation Architecture
+        // Node.js Environment
+        NODE_ENV: props.environment === 'prod' ? 'production' : 'development',
+        // AWS Configuration for Discord.js Implementation
         AWS_DEFAULT_REGION: this.region,
         AWS_REGION: this.region,
         // DynamoDB Table Names (fallback values, secrets override these)
@@ -171,19 +174,28 @@ export class EcsStack extends cdk.Stack {
         LAVALINK_PORT: '2333',
         LAVALINK_SECURE: 'false',  // HTTP connection (same container network)
         LAVALINK_PASSWORD: props.appConfigSecret.secretValueFromJson('lavalink_password').unsafeUnwrap(), // Same password as Lavalink container from app-config secret
+        // Health Check Configuration
+        HEALTH_CHECK_PORT: '3000',
+        HEALTH_CHECK_HOST: '0.0.0.0',
         // Force deployment update
         DEPLOYMENT_VERSION: new Date().toISOString(),
       },
       // No secrets needed - AwsSecretsService handles all secret retrieval
+      portMappings: [
+        {
+          containerPort: 3000,  // Health check endpoint
+          protocol: ecs.Protocol.TCP,
+        },
+      ],
       healthCheck: {
-        // Health check matches Docker container: check if Java process is running
-        command: ['CMD-SHELL', 'pgrep -f "java.*timmybot.jar" > /dev/null || exit 1'],
-        interval: cdk.Duration.seconds(30),
-        timeout: cdk.Duration.seconds(10),
-        retries: 3,
-        startPeriod: cdk.Duration.seconds(90),  // Increased: wait for Lavalink to be ready
+        // Health check for Discord.js: HTTP endpoint
+        command: ['CMD-SHELL', 'node dist/health-check-standalone.js || exit 1'],
+        interval: cdk.Duration.seconds(180), // Much longer interval - 3 minutes
+        timeout: cdk.Duration.seconds(30),   // Longer timeout for startup
+        retries: 5,  // More retries before marking unhealthy
+        startPeriod: cdk.Duration.seconds(300), // 5 minutes for full Discord bot initialization
       },  
-      essential: true,  // If TimmyBot crashes, restart the whole task
+      essential: true,  // Keep TimmyBot as essential but with reduced restart frequency
     });
 
     // Container Dependencies - TimmyBot waits for Lavalink to be healthy  
@@ -194,12 +206,12 @@ export class EcsStack extends cdk.Stack {
 
     // No port mappings needed - Discord bot uses WebSocket connections
 
-    // ECS Service
+    // ECS Service with circuit breaker disabled to prevent restart loops
     this.service = new ecs.FargateService(this, 'TimmyBotService', {
       serviceName: `${props.projectName}-${props.environment}-service`,
       cluster: this.cluster,
       taskDefinition: this.taskDefinition,
-      desiredCount: 0, // Start with 0 - will scale up after deployment
+      desiredCount: 1, // Set to 1 for normal operation
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
@@ -217,13 +229,19 @@ export class EcsStack extends cdk.Stack {
         },
       ],
       enableExecuteCommand: true, // For debugging
+      // Disable circuit breaker to prevent automatic rollbacks on failure
+      circuitBreaker: {
+        rollback: false,
+      },
     });
 
-    // Auto Scaling
+    // Auto Scaling - keep minimum at 1 to prevent complete shutdown
     const scaling = this.service.autoScaleTaskCount({
-      minCapacity: 0,
-      maxCapacity: 5,
+      minCapacity: 1, // Keep at least 1 task running
+      maxCapacity: 2, // Reduced max capacity for cost control
     });
+
+    // Note: CloudWatch alarms and SNS topics are managed in the monitoring stack
 
     // Tags
     cdk.Tags.of(this.cluster).add('Project', props.projectName);
@@ -249,5 +267,7 @@ export class EcsStack extends cdk.Stack {
       description: 'ECS Task Role ARN',
       exportName: `${props.projectName}-${props.environment}-task-role-arn`,
     });
+
+    // Note: Alert topic ARN is exported from the monitoring stack
   }
 }

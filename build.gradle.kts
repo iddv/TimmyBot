@@ -12,6 +12,7 @@ repositories {
     mavenCentral()
     maven("https://m2.dv8tion.net/releases")
     maven("https://maven.arbjerg.dev/snapshots") // Required for Lavalink.kt
+    maven("https://oss.sonatype.org/content/repositories/snapshots") // For KordEx snapshots
 }
 
 dependencies {

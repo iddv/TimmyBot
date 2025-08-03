@@ -139,3 +139,13 @@ Thumbs.db
 *.temp
 .cache/
 dist/
+
+##############################
+## Kiro IDE
+##############################
+.kiro/
+
+##############################
+## AWS Task Definitions (Generated)
+##############################
+*task-definition.json
